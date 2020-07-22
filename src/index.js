@@ -15,6 +15,18 @@ class ParserError extends Error {
   }
 }
 
+class TraversalError extends Error {
+  constructor(...params) {
+    super(...params);
+
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, TraversalError);
+    }
+
+    this.name = "TraversalError";
+  }
+}
+
 class SimpleCalDAV {
   constructor(uri) {
     this.uri = uri;
@@ -26,35 +38,27 @@ class SimpleCalDAV {
       headers: {
         "Content-Type": "application/xml; charset=utf-8"
       },
+      // TODO: At one point, we could start templating this...
       body: `
-				<c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
-					 <d:prop>
-						<d:getetag />
-						<c:calendar-data />
-					</d:prop>
-					<c:filter>
-						<c:comp-filter name="VCALENDAR" />
-					</c:filter>
-				</c:calendar-query>`
+        <c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+           <d:prop>
+            <d:getetag />
+            <c:calendar-data />
+          </d:prop>
+          <c:filter>
+            <c:comp-filter name="VCALENDAR" />
+          </c:filter>
+        </c:calendar-query>`
     });
 
     const text = await res.text();
-    const parsedRes = await parseStringPromise(text);
+    const xml = await parseStringPromise(text);
 
-    let events;
-    if (parsedRes && parsedRes.multistatus && parsedRes.multistatus.response) {
-      const { response } = parsedRes.multistatus;
-
-      events = response
-        .map(item => item.propstat.map(sub => sub.prop[0]["C:calendar-data"]))
-        .flat(2);
-      return events.map(this._parse);
-    } else {
-      throw new ParserError("Server response couldn't be parsed");
-    }
+    let events = SimpleCalDAV.traverseXML(xml, "C:calendar-data");
+    return events.map(this.parseICS);
   }
 
-  _parse(evt) {
+  parseICS(evt) {
     let parsedCal;
     try {
       parsedCal = ICAL.parse(evt);
@@ -73,30 +77,52 @@ class SimpleCalDAV {
     return parsed;
   }
 
-  async _syncETag() {
+  static traverseXML(xml, identifier) {
+    if (xml && xml.multistatus && xml.multistatus.response) {
+      let content = xml.multistatus.response;
+
+      content = content
+        .map(item => item.propstat.map(sub => sub.prop[0][identifier]))
+        .flat(2);
+      return content;
+    } else {
+      throw new TraversalError("Unexpected XML structure discovered.");
+    }
+  }
+
+  async getETags() {
     const cal = await fetch(this.uri, {
       method: "REPORT",
       headers: {
         "Content-Type": "application/xml; charset=utf-8"
       },
       body: `
-				<c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
-					 <d:prop>
-						<d:getetag />
-					</d:prop>
-					<c:filter>
-						<c:comp-filter name="VCALENDAR" />
-					</c:filter>
-				</c:calendar-query>`
+        <c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+           <d:prop>
+            <d:getetag />
+          </d:prop>
+          <c:filter>
+            <c:comp-filter name="VCALENDAR" />
+          </c:filter>
+        </c:calendar-query>`
     });
 
     const text = await cal.text();
+    const xml = await parseStringPromise(text);
+    // NOTE: For some reason, etags currently come with double quotes from the
+    // radicale server that we're building against. Since they're sent with
+    // double quotes consistently, I've decided to simply leave them in. Mainly,
+    // because a tag's change notifies a change in storage. This assumption
+    // doesn't change with consistently added double quotes.
+    const etags = SimpleCalDAV.traverseXML(xml, "getetag");
+    return etags;
   }
 }
 
 module.exports = {
   SimpleCalDAV,
   errors: {
-    ParserError
+    ParserError,
+    TraversalError
   }
 };

@@ -1,10 +1,11 @@
 // @format
 const test = require("ava");
 const createWorker = require("expressively-mocked-fetch");
+const { parseStringPromise } = require("xml2js");
 
 const {
   SimpleCalDAV,
-  errors: { ParserError }
+  errors: { ParserError, TraversalError }
 } = require("../src/index.js");
 
 const PORT = 3000;
@@ -16,16 +17,37 @@ test("if parameters are correctly stored", t => {
   t.assert(dav.uri === URI);
 });
 
+test("if objects are correctly exported", t => {
+  const libObj = require("../src/index.js");
+
+  t.assert("errors" in libObj);
+  t.assert("SimpleCalDAV" in libObj);
+  t.assert("ParserError" in libObj.errors);
+  t.assert("TraversalError" in libObj.errors);
+});
+
 test("test fetching empty calendar", async t => {
   const worker = await createWorker(`
     app.report('/', function (req, res) {
       res.send(\`
-        <xml>
-          BEGIN:VCALENDAR
-          VERSION:2.0
-          PRODID: blaaa
-          END:VCALENDAR
-        </xml>
+<?xml version="1.0" encoding="UTF-8"?>
+<multistatus xmlns="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+   <response>
+      <href>/radicale/example%40gmail.com/8409b6d2-8dcc-997b-45d6-517801237d38/50113370-f61f-4444-9e94-e3ba1d2467b8.ics</href>
+      <propstat>
+         <prop>
+            <getetag>"aa98130e9fac911f70a73dac8b57e58a482b04ec4b8a5417dfedf8f42069c6d0"</getetag>
+            <C:calendar-data>
+              BEGIN:VCALENDAR
+              VERSION:2.0
+              PRODID: blaaa
+              END:VCALENDAR
+						</C:calendar-data>
+         </prop>
+         <status>HTTP/1.1 200 OK</status>
+      </propstat>
+   </response>
+</multistatus>
       \`);
     });
   `);
@@ -57,7 +79,7 @@ test("fetching no ics compatible response", async t => {
     async () => {
       await dav.get();
     },
-    { instanceOf: ParserError }
+    { instanceOf: TraversalError }
   );
 });
 
@@ -220,4 +242,94 @@ END:VCALENDAR</C:calendar-data>
   const events = await dav.get();
   t.assert(events.length === 2);
   t.assert(events[0].summary === summary);
+});
+
+test("traversing a correct XML tree", async t => {
+  const expected = "def";
+  const expected2 = "lel";
+  const s = `<?xml version="1.0" encoding="UTF-8"?>
+  <multistatus xmlns="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+     <response>
+        <href>/radicale/example%40gmail.com/8409b6d2-8dcc-997b-45d6-517801237d38/50113370-f61f-4444-9e94-e3ba1d2467b8.ics</href>
+        <propstat>
+           <prop>
+              <getetag>"aa98130e9fac911f70a73dac8b57e58a482b04ec4b8a5417dfedf8f42069c6d0"</getetag>
+							<abc>${expected}</abc>
+           </prop>
+           <status>HTTP/1.1 200 OK</status>
+        </propstat>
+     </response>
+     <response>
+        <href>/radicale/example%40gmail.com/8409b6d2-8dcc-997b-45d6-517801237d38/50113370-f61f-4444-9e94-e3ba1d2467b8.ics</href>
+        <propstat>
+           <prop>
+              <getetag>"aa98130e9fac911f70a73dac8b57e58a482b04ec4b8a5417dfedf8f42069c6d0"</getetag>
+							<abc>${expected2}</abc>
+           </prop>
+           <status>HTTP/1.1 200 OK</status>
+        </propstat>
+     </response>
+  </multistatus>
+  `;
+  const xml = await parseStringPromise(s);
+
+  const content = SimpleCalDAV.traverseXML(xml, "abc");
+  t.assert(content.length === 2);
+  t.assert(content[0] === expected);
+  t.assert(content[1] === expected2);
+});
+
+test("traversing an incorrect XML tree", async t => {
+  const expected = "def";
+  const expected2 = "lel";
+  const s = `<?xml version="1.0" encoding="UTF-8"?>
+	<incorrect>
+	</incorrect>
+  `;
+  const xml = await parseStringPromise(s);
+
+  t.throws(
+    () => {
+      SimpleCalDAV.traverseXML(xml, "abc");
+    },
+    { instanceOf: TraversalError }
+  );
+});
+
+test("synching etag", async t => {
+  const etag1 = "etag1";
+  const etag2 = "etag2";
+  const worker = await createWorker(`
+    app.report('/', function (req, res) {
+      res.send(\`<?xml version="1.0" encoding="UTF-8"?>
+        <multistatus xmlns="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+           <response>
+              <href>/radicale/example%40gmail.com/8409b6d2-8dcc-997b-45d6-517801237d38/50113370-f61f-4444-9e94-e3ba1d2467b8.ics</href>
+              <propstat>
+                 <prop>
+                    <getetag>${etag1}</getetag>
+                 </prop>
+                 <status>HTTP/1.1 200 OK</status>
+              </propstat>
+           </response>
+           <response>
+              <href>/radicale/example%40gmail.com/8409b6d2-8dcc-997b-45d6-517801237d38/50113370-f61f-4444-9e94-e3ba1d2467b8.ics</href>
+              <propstat>
+                 <prop>
+                    <getetag>${etag2}</getetag>
+                 </prop>
+                 <status>HTTP/1.1 200 OK</status>
+              </propstat>
+           </response>
+        </multistatus>
+      \`);
+    });
+  `);
+
+  const URI = `http://localhost:${worker.port}`;
+  const dav = new SimpleCalDAV(URI);
+  const etags = await dav.getETags();
+  t.assert(etags.length === 2);
+  t.assert(etags[0] === etag1);
+  t.assert(etags[1] === etag2);
 });
