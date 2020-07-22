@@ -1,0 +1,41 @@
+{
+  "name": "simple-caldav",
+  "version": "0.0.1",
+  "description": "A library to make caldav calls straight-forward for developers",
+  "main": "./src/index.js",
+  "scripts": {
+    "test": "ava -v",
+    "watch": "ava -v --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/TimDaub/simple-caldav.git"
+  },
+  "keywords": [
+    "caldav",
+    "simple",
+    "user",
+    "experience",
+    "webdav"
+  ],
+  "author": "Tim Daubenschütz <tim@daubenschuetz.de> (https://timdaub.github.io)",
+  "bugs": {
+    "url": "https://github.com/TimDaub/simple-caldav/issues"
+  },
+  "homepage": "https://github.com/TimDaub/simple-caldav#readme",
+  "dependencies": {
+    "cross-fetch": "3.0.5",
+    "ical.js": "git+https://github.com/TimDaub/ical.js.git#feat/module-detect-build",
+    "xml2js": "0.4.23"
+  },
+  "devDependencies": {
+    "ava": "3.10.1",
+    "browser-env": "3.3.0",
+    "expressively-mocked-fetch": "0.0.2"
+  },
+  "ava": {
+    "require": [
+      "./test/_setup-browser-env.js"
+    ]
+  }
+}
