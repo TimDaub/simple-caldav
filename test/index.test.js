@@ -1,7 +1,7 @@
 // @format
 const test = require("ava");
 const createWorker = require("expressively-mocked-fetch");
-const { parseStringPromise } = require("xml2js");
+const dom = require('xmldom').DOMParser;
 
 const {
   SimpleCalDAV,
@@ -271,12 +271,18 @@ test("traversing a correct XML tree", async t => {
      </response>
   </multistatus>
   `;
-  const xml = await parseStringPromise(s);
+  const doc = new dom().parseFromString(s, "text/xml")
 
-  const content = SimpleCalDAV.traverseXML(xml, "abc");
-  t.assert(content.length === 2);
-  t.assert(content[0] === expected);
-  t.assert(content[1] === expected2);
+  const instruction = {
+    "href": "//*[local-name()='href']/text()",
+    "etag": "//*[local-name(.)='getetag']/text()",
+    "abc": "//*[local-name(.)='abc']/text()",
+  }
+  const content = SimpleCalDAV.traverseXML(doc, instruction);
+  t.assert("href" in content && "etag" in content && "abc" in content);
+  t.assert(content.abc.length === 2);
+  t.assert(content.abc[0] === expected);
+  t.assert(content.abc[1] === expected2);
 });
 
 test("traversing an incorrect XML tree", async t => {
@@ -286,11 +292,11 @@ test("traversing an incorrect XML tree", async t => {
 	<incorrect>
 	</incorrect>
   `;
-  const xml = await parseStringPromise(s);
+  const doc = new dom().parseFromString(s)
 
   t.throws(
     () => {
-      SimpleCalDAV.traverseXML(xml, "abc");
+      SimpleCalDAV.traverseXML(doc, {"test": "123"});
     },
     { instanceOf: TraversalError }
   );
@@ -329,7 +335,7 @@ test("synching etag", async t => {
   const URI = `http://localhost:${worker.port}`;
   const dav = new SimpleCalDAV(URI);
   const etags = await dav.getETags();
-  t.assert(etags.length === 2);
-  t.assert(etags[0] === etag1);
-  t.assert(etags[1] === etag2);
+  t.assert("href" in etags && "etag" in etags);
+  t.assert(etags.href.length == 2);
+  t.assert(etags.etag.length == 2);
 });

@@ -1,7 +1,8 @@
 // @format
 const ical = require("ical.js");
 const fetch = require("cross-fetch");
-const { parseStringPromise } = require("xml2js");
+const xpath = require("xpath");
+const dom = require('xmldom').DOMParser;
 
 class ParserError extends Error {
   constructor(...params) {
@@ -52,9 +53,12 @@ class SimpleCalDAV {
     });
 
     const text = await res.text();
-    const xml = await parseStringPromise(text);
+    const doc = new dom().parseFromString(text)
+    const instruction = {
+      events: "//*[local-name()='calendar-data']/text()",
+    }
 
-    let events = SimpleCalDAV.traverseXML(xml, "C:calendar-data");
+    let { events } = SimpleCalDAV.traverseXML(doc, instruction);
     return events.map(this.parseICS);
   }
 
@@ -77,17 +81,16 @@ class SimpleCalDAV {
     return parsed;
   }
 
-  static traverseXML(xml, identifier) {
-    if (xml && xml.multistatus && xml.multistatus.response) {
-      let content = xml.multistatus.response;
-
-      content = content
-        .map(item => item.propstat.map(sub => sub.prop[0][identifier]))
-        .flat(2);
-      return content;
-    } else {
-      throw new TraversalError("Unexpected XML structure discovered.");
+  static traverseXML(doc, instruction) {
+    for (const [key, path] of Object.entries(instruction)) {
+      const nodes = xpath.select(path, doc)
+      if (!nodes.length) {
+        throw new TraversalError(`Couldn't find path from instruction: ${path}`);
+      }
+      instruction[key] = nodes.map(n => n.nodeValue);
     }
+
+    return instruction;
   }
 
   async getETags() {
@@ -108,13 +111,17 @@ class SimpleCalDAV {
     });
 
     const text = await cal.text();
-    const xml = await parseStringPromise(text);
     // NOTE: For some reason, etags currently come with double quotes from the
     // radicale server that we're building against. Since they're sent with
     // double quotes consistently, I've decided to simply leave them in. Mainly,
     // because a tag's change notifies a change in storage. This assumption
     // doesn't change with consistently added double quotes.
-    const etags = SimpleCalDAV.traverseXML(xml, "getetag");
+    const instruction = {
+      href: "//*[local-name()='href']/text()",
+      etag: "//*[local-name()='getetag']/text()"
+    };
+    const doc = new dom().parseFromString(text)
+    const etags = SimpleCalDAV.traverseXML(doc, instruction);
     return etags;
   }
 }
