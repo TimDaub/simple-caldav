@@ -24,3 +24,10 @@ $ npm run test
 ## License
 
 [WIP]
+
+## References
+
+- 1: [Building a CalDAV Client](https://sabre.io/dav/building-a-caldav-client/)
+- 2: [Radicale 3.0 Documentation: Command line client](https://radicale.org/3.0.html#documentation/supported-clients/command-line)
+- 3: [iCalendar Validator](https://icalendar.org/validator.html)
+- 4: [iCal specification](https://tools.ietf.org/html/rfc5545)

@@ -2,7 +2,12 @@
 const ical = require("ical.js");
 const fetch = require("cross-fetch");
 const xpath = require("xpath");
-const dom = require('xmldom').DOMParser;
+const dom = require("xmldom").DOMParser;
+const { v4: uuidv4 } = require("uuid");
+const moment = require("moment");
+
+const prodid = "-//TimDaub//simple-caldav//EN";
+const dateTimeFormat = "YMMDDTHHmmss[Z]";
 
 class ParserError extends Error {
   constructor(...params) {
@@ -33,6 +38,39 @@ class SimpleCalDAV {
     this.uri = uri;
   }
 
+  async createEvent(start, end, summary) {
+    // NOTE: It's recommended to add a `@host.com` postfix to the uid. Since,
+    // however, this lib will be used by a multitude of clients and since other
+    // implementations neither add a postfix (e.g. Thunderbird's caldav plugin),
+    // we've taken the freedom to leave it out too.
+    const uid = uuidv4();
+
+    return await fetch(`${this.uri}/${uid}.ics`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "text/calendar; charset=utf-8",
+        // NOTE: By adding the `If-None-Match` header, we're making sure that
+        // we don't accidentially overwrite an already existing component on
+        // the server.
+        "If-None-Match": "*"
+      },
+      // NOTE: Formating of BEGIN:VCALENDAR and END:VCALENDAR, needs to stay
+      // exactly like this, as the request is whitecase sensitive.
+      body: `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:${prodid}
+BEGIN:VEVENT
+UID:${uid}
+DTSTAMP:${SimpleCalDAV.formatDateTime(new Date())}
+DTSTART:${SimpleCalDAV.formatDateTime(start)}
+DTEND:${SimpleCalDAV.formatDateTime(end)}
+SUMMARY:${summary}
+END:VEVENT
+END:VCALENDAR`
+    });
+  }
+
+  // TODO: Rename to `listEvents()`?
   async get() {
     const res = await fetch(this.uri, {
       method: "REPORT",
@@ -53,10 +91,10 @@ class SimpleCalDAV {
     });
 
     const text = await res.text();
-    const doc = new dom().parseFromString(text)
+    const doc = new dom().parseFromString(text);
     const instruction = {
-      events: "//*[local-name()='calendar-data']/text()",
-    }
+      events: "//*[local-name()='calendar-data']/text()"
+    };
 
     let { events } = SimpleCalDAV.traverseXML(doc, instruction);
     return events.map(this.parseICS);
@@ -83,14 +121,23 @@ class SimpleCalDAV {
 
   static traverseXML(doc, instruction) {
     for (const [key, path] of Object.entries(instruction)) {
-      const nodes = xpath.select(path, doc)
+      const nodes = xpath.select(path, doc);
       if (!nodes.length) {
-        throw new TraversalError(`Couldn't find path from instruction: ${path}`);
+        throw new TraversalError(
+          `Couldn't find path from instruction: ${path}`
+        );
       }
       instruction[key] = nodes.map(n => n.nodeValue);
     }
 
     return instruction;
+  }
+
+  static formatDateTime(dateTime) {
+    // NOTE: See https://tools.ietf.org/html/rfc5545 under:
+    // "FORM #2: DATE WITH UTC TIME"
+    const date = moment(dateTime);
+    return date.utc().format(dateTimeFormat);
   }
 
   async getETags() {
@@ -120,7 +167,7 @@ class SimpleCalDAV {
       href: "//*[local-name()='href']/text()",
       etag: "//*[local-name()='getetag']/text()"
     };
-    const doc = new dom().parseFromString(text)
+    const doc = new dom().parseFromString(text);
     const etags = SimpleCalDAV.traverseXML(doc, instruction);
     return etags;
   }

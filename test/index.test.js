@@ -1,7 +1,8 @@
 // @format
 const test = require("ava");
 const createWorker = require("expressively-mocked-fetch");
-const dom = require('xmldom').DOMParser;
+const dom = require("xmldom").DOMParser;
+const moment = require("moment");
 
 const {
   SimpleCalDAV,
@@ -271,13 +272,13 @@ test("traversing a correct XML tree", async t => {
      </response>
   </multistatus>
   `;
-  const doc = new dom().parseFromString(s, "text/xml")
+  const doc = new dom().parseFromString(s, "text/xml");
 
   const instruction = {
-    "href": "//*[local-name()='href']/text()",
-    "etag": "//*[local-name(.)='getetag']/text()",
-    "abc": "//*[local-name(.)='abc']/text()",
-  }
+    href: "//*[local-name()='href']/text()",
+    etag: "//*[local-name(.)='getetag']/text()",
+    abc: "//*[local-name(.)='abc']/text()"
+  };
   const content = SimpleCalDAV.traverseXML(doc, instruction);
   t.assert("href" in content && "etag" in content && "abc" in content);
   t.assert(content.abc.length === 2);
@@ -292,11 +293,11 @@ test("traversing an incorrect XML tree", async t => {
 	<incorrect>
 	</incorrect>
   `;
-  const doc = new dom().parseFromString(s)
+  const doc = new dom().parseFromString(s);
 
   t.throws(
     () => {
-      SimpleCalDAV.traverseXML(doc, {"test": "123"});
+      SimpleCalDAV.traverseXML(doc, { test: "123" });
     },
     { instanceOf: TraversalError }
   );
@@ -338,4 +339,32 @@ test("synching etag", async t => {
   t.assert("href" in etags && "etag" in etags);
   t.assert(etags.href.length == 2);
   t.assert(etags.etag.length == 2);
+});
+
+test("formatting a date to iCal compliant date time", t => {
+  // NOTE: For reference, see https://tools.ietf.org/html/rfc5545 under:
+  // "FORM #2: DATE WITH UTC TIME"
+  const formatted = SimpleCalDAV.formatDateTime(new Date());
+  const format = new RegExp(
+    "[0-9]{4}[0-1][0-9][0-3][0-9]T[0-2][0-9][0-6][0-9]\\d{2}Z"
+  );
+  // Tested with: 19980119T070000Z
+  t.assert(format.test(formatted));
+});
+
+test("creating an event", async t => {
+  const worker = await createWorker(`
+    app.put('/:resource', function (req, res) {
+      res.status(201).send();
+    });
+  `);
+  const URI = `http://localhost:${worker.port}`;
+
+  const dav = new SimpleCalDAV(URI);
+  const start = moment().format();
+  const end = moment()
+    .add(1, "hour")
+    .format();
+  const res = await dav.createEvent(start, end, "test summary");
+  t.assert(res.status === 201);
 });
