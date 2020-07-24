@@ -366,3 +366,20 @@ test("creating an event", async t => {
   const res = await dav.createEvent(start, end, "test summary");
   t.assert(res.status === 201);
 });
+
+test("updating an event completely", async t => {
+  const uid = "445ecbbc-acca-4ebb-b733-5c03477d048a";
+  const worker = await createWorker(`
+    app.put('/${uid}.ics', function (req, res) {
+      res.status(201).send();
+    });
+  `);
+  const URI = `http://localhost:${worker.port}`;
+  const dav = new SimpleCalDAV(URI);
+  const start = moment().format();
+  const end = moment()
+    .add(1, "hour")
+    .format();
+  const res = await dav.updateEvent(uid, start, end, "updated summary");
+  t.assert(res.status === 201);
+});

@@ -13,6 +13,10 @@ developer experience. simple-caldav is that attempt.
 
 [WIP]
 
+## Usage
+
+For now, see [tests](./test/index.test.js).
+
 ## Contributing
 
 ```bash

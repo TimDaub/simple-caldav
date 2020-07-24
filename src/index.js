@@ -5,6 +5,10 @@ const xpath = require("xpath");
 const dom = require("xmldom").DOMParser;
 const { v4: uuidv4 } = require("uuid");
 const moment = require("moment");
+// NOTE: We decided on using sha1 for generating etags, as there's no mutual
+// crypto API for simple-caldav's targets, which are nodejs and browser
+// environments.
+const sha1 = require("sha1");
 
 const prodid = "-//TimDaub//simple-caldav//EN";
 const dateTimeFormat = "YMMDDTHHmmss[Z]";
@@ -39,21 +43,40 @@ class SimpleCalDAV {
   }
 
   async createEvent(start, end, summary) {
-    // NOTE: It's recommended to add a `@host.com` postfix to the uid. Since,
-    // however, this lib will be used by a multitude of clients and since other
-    // implementations neither add a postfix (e.g. Thunderbird's caldav plugin),
-    // we've taken the freedom to leave it out too.
-    const uid = uuidv4();
+    return this.handleEvent(start, end, summary, "create");
+  }
+
+  // TODO: Do we want to make this method more convenient by allowing partial
+  // updates?
+  async updateEvent(uid, start, end, summary) {
+    return this.handleEvent(start, end, summary, "update", uid);
+  }
+
+  async handleEvent(start, end, summary, method, uid = "") {
+    if (!uid) {
+      // NOTE: It's recommended to add a `@host.com` postfix to the uid. Since,
+      // however, this lib will be used by a multitude of clients and since other
+      // implementations neither add a postfix (e.g. Thunderbird's caldav plugin),
+      // we've taken the freedom to leave it out too.
+      uid = uuidv4();
+    }
+
+    let headers = {
+      "Content-Type": "text/calendar; charset=utf-8"
+    };
+
+    if (method === "create") {
+      headers = { ...headers, ...{ "If-None-Match": "*" } };
+    } else if (method === "update") {
+      // TODO: Does it make sense to use Etags here?
+      // noop
+    } else {
+      throw new InternalError(`method "${method}" not implemented`);
+    }
 
     return await fetch(`${this.uri}/${uid}.ics`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "text/calendar; charset=utf-8",
-        // NOTE: By adding the `If-None-Match` header, we're making sure that
-        // we don't accidentially overwrite an already existing component on
-        // the server.
-        "If-None-Match": "*"
-      },
+      headers,
       // NOTE: Formating of BEGIN:VCALENDAR and END:VCALENDAR, needs to stay
       // exactly like this, as the request is whitecase sensitive.
       body: `BEGIN:VCALENDAR
@@ -99,6 +122,7 @@ END:VCALENDAR`
     return events.map(this.parseICS);
   }
 
+  // TODO: Make static?
   parseICS(evt) {
     let parsedCal;
     try {
@@ -116,6 +140,10 @@ END:VCALENDAR`
     const vevent = comp.getFirstSubcomponent("vevent");
     const parsed = new ICAL.Event(vevent);
     return parsed;
+  }
+
+  static genETag(s) {
+    return sha1(s);
   }
 
   static traverseXML(doc, instruction) {
