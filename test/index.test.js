@@ -9,8 +9,6 @@ const {
   errors: { ParserError, TraversalError }
 } = require("../src/index.js");
 
-const PORT = 3000;
-
 test("if parameters are correctly stored", t => {
   const URI = "https://example.com";
   const dav = new SimpleCalDAV(URI);
@@ -57,7 +55,7 @@ test("test fetching empty calendar", async t => {
   const dav = new SimpleCalDAV(URI);
   await t.throwsAsync(
     async () => {
-      await dav.get();
+      await dav.listEvents();
     },
     { instanceOf: ParserError }
   );
@@ -78,7 +76,7 @@ test("fetching no ics compatible response", async t => {
   const dav = new SimpleCalDAV(URI);
   await t.throwsAsync(
     async () => {
-      await dav.get();
+      await dav.listEvents();
     },
     { instanceOf: TraversalError }
   );
@@ -139,7 +137,7 @@ END:VCALENDAR</C:calendar-data>
 
   const URI = `http://localhost:${worker.port}`;
   const dav = new SimpleCalDAV(URI);
-  const events = await dav.get();
+  const events = await dav.listEvents();
   t.assert(events.length === 1);
 });
 
@@ -240,7 +238,7 @@ END:VCALENDAR</C:calendar-data>
 
   const URI = `http://localhost:${worker.port}`;
   const dav = new SimpleCalDAV(URI);
-  const events = await dav.get();
+  const events = await dav.listEvents();
   t.assert(events.length === 2);
   t.assert(events[0].summary === summary);
 });

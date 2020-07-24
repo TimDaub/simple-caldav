@@ -70,8 +70,7 @@ END:VCALENDAR`
     });
   }
 
-  // TODO: Rename to `listEvents()`?
-  async get() {
+  async listEvents() {
     const res = await fetch(this.uri, {
       method: "REPORT",
       headers: {
