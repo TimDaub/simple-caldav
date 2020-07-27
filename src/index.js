@@ -84,7 +84,6 @@ class SimpleCalDAV {
   static toVEVENT(evt, alarms) {
     if ("uid" in evt && "start" in evt && "end" in evt && "summary" in evt) {
       let vevent = "BEGIN:VCALENDAR\n";
-      vevent += "BEGIN:VEVENT\n";
       vevent += `VERSION:2.0\n`;
       vevent += `PRODID:${prodid}\n`;
       vevent += "BEGIN:VEVENT\n";
