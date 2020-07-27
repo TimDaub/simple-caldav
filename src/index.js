@@ -164,11 +164,10 @@ class SimpleCalDAV {
     };
 
     let { events } = SimpleCalDAV.traverseXML(doc, instruction);
-    return transform(events.map(this.parseICS));
+    return transform(events.map(SimpleCalDAV.parseICS));
   }
 
-  // TODO: Make static?
-  parseICS(evt) {
+  static parseICS(evt) {
     let parsedCal;
     try {
       parsedCal = ICAL.parse(evt);
