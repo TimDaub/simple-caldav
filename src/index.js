@@ -93,7 +93,7 @@ END:VCALENDAR`
     });
   }
 
-  async listEvents() {
+  async listEvents(transform=SimpleCalDAV.simplifyEvents) {
     const res = await fetch(this.uri, {
       method: "REPORT",
       headers: {
@@ -119,7 +119,7 @@ END:VCALENDAR`
     };
 
     let { events } = SimpleCalDAV.traverseXML(doc, instruction);
-    return events.map(this.parseICS);
+    return transform(events.map(this.parseICS));
   }
 
   // TODO: Make static?
@@ -144,6 +144,14 @@ END:VCALENDAR`
 
   static genETag(s) {
     return sha1(s);
+  }
+
+  static simplifyEvents(events) {
+    return events.map(evt => ({
+      summary: evt.summary,
+      start: evt.startDate.toJSDate(),
+      end: evt.endDate.toJSDate()
+    }));
   }
 
   static traverseXML(doc, instruction) {

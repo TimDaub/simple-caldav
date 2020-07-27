@@ -139,6 +139,9 @@ END:VCALENDAR</C:calendar-data>
   const dav = new SimpleCalDAV(URI);
   const events = await dav.listEvents();
   t.assert(events.length === 1);
+  t.assert(events[0].summary === summary);
+  t.assert(events[0].start instanceof Date);
+  t.assert(events[0].end instanceof Date);
 });
 
 test("fetching calendar with multiple events", async t => {
@@ -241,6 +244,8 @@ END:VCALENDAR</C:calendar-data>
   const events = await dav.listEvents();
   t.assert(events.length === 2);
   t.assert(events[0].summary === summary);
+  t.assert(events[0].start instanceof Date);
+  t.assert(events[0].end instanceof Date);
 });
 
 test("traversing a correct XML tree", async t => {

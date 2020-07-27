@@ -29,6 +29,11 @@ $ npm run test
 
 ## Changelog
 
+### 0.1.0
+
+- Transform ical.js events to simple JSON objects and all customizable
+transformation parameter on `listEvents` method
+
 ### 0.0.1
 
 - Initial release
