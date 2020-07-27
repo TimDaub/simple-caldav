@@ -29,6 +29,10 @@ $ npm run test
 
 ## Changelog
 
+### 0.1.3
+
+- Fix bug in VALARM construction
+
 ### 0.1.2
 
 - Fix bug in VEVENT construction
