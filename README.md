@@ -5,13 +5,15 @@
 ## Note on Completeness
 
 The caldav and ICS specifications are large. Additionally, I'm not sure I ever
-want to implement them completely. But I saw the need some a simple module that
+want to implement them completely. But I saw the need to a simple module that
 works with e.g. [radicale](https://radicale.org/3.0.html) and provides decent
 developer experience. simple-caldav is that attempt.
 
 ## Installation
 
-[WIP]
+```bash
+$ npm i --save simple-caldav
+```
 
 ## Usage
 
@@ -24,6 +26,12 @@ $ git clone git@github.com:TimDaub/simple-caldav.git
 $ cd simple-caldav && npm i
 $ npm run test
 ```
+
+## Changelog
+
+### 0.0.1
+
+- Initial release
 
 ## License
 
