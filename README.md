@@ -29,6 +29,10 @@ $ npm run test
 
 ## Changelog
 
+### 0.1.2
+
+- Fix bug in VEVENT construction
+
 ### 0.1.1
 
 - Allow adding VALARMS to VEVENTS
