@@ -388,3 +388,50 @@ test("updating an event completely", async t => {
   const res = await dav.updateEvent(uid, start, end, "updated summary");
   t.assert(res.status === 201);
 });
+
+test("transforming an event without alarms to a VEVENT", t => {
+  const evt = {
+    start: new Date(),
+    end: new Date(),
+    summary: "abc",
+    uid: "uid"
+  };
+  const vevent = SimpleCalDAV.toVEVENT(evt);
+  t.assert(new RegExp("UID:uid").test(vevent));
+  t.assert(new RegExp("SUMMARY:abc").test(vevent));
+  t.assert(new RegExp("DTSTART:\\d{8}T\\d{6}Z").test(vevent));
+  t.assert(new RegExp("DTEND:\\d{8}T\\d{6}Z").test(vevent));
+  t.assert(new RegExp("DTSTAMP:\\d{8}T\\d{6}Z").test(vevent));
+});
+
+test("transforming an email alarm into a VALARM", t => {
+  const alarm = {
+    action: "email",
+    summary: "Email's subject",
+    description: "email's description",
+    trigger: new Date(),
+    attendee: "email@example.com"
+  };
+
+  const valarm = SimpleCalDAV.toVALARM(alarm);
+  t.assert(new RegExp("ACTION:EMAIL").test(valarm));
+  t.assert(new RegExp(`SUMMARY:${alarm.summary}`).test(valarm));
+  t.assert(new RegExp(`DESCRIPTION:${alarm.description}`).test(valarm));
+  t.assert(new RegExp("TRIGGER:\\d{8}T\\d{6}Z").test(valarm));
+  t.assert(new RegExp(`ATTENDEE:mailto:${alarm.attendee}`).test(valarm));
+});
+
+test("transforming an sms alarm into a VALARM", t => {
+  const alarm = {
+    action: "sms",
+    description: "sms's description",
+    trigger: new Date(),
+    attendee: "0123456789"
+  };
+
+  const valarm = SimpleCalDAV.toVALARM(alarm);
+  t.assert(new RegExp("ACTION:SMS").test(valarm));
+  t.assert(new RegExp(`DESCRIPTION:${alarm.description}`).test(valarm));
+  t.assert(new RegExp("TRIGGER:\\d{8}T\\d{6}Z").test(valarm));
+  t.assert(new RegExp(`ATTENDEE:sms:${alarm.attendee}`).test(valarm));
+});

@@ -42,17 +42,69 @@ class SimpleCalDAV {
     this.uri = uri;
   }
 
-  async createEvent(start, end, summary) {
-    return this.handleEvent(start, end, summary, "create");
+  async createEvent(start, end, summary, alarms) {
+    return this.handleEvent(start, end, summary, alarms, "create");
   }
 
   // TODO: Do we want to make this method more convenient by allowing partial
   // updates?
-  async updateEvent(uid, start, end, summary) {
-    return this.handleEvent(start, end, summary, "update", uid);
+  async updateEvent(uid, start, end, summary, alarms) {
+    return this.handleEvent(start, end, summary, alarms, "update", uid);
   }
 
-  async handleEvent(start, end, summary, method, uid = "") {
+  static toVALARM(alarm) {
+    let attendee;
+    if (alarm && alarm.attendee && alarm.action.toUpperCase() === "EMAIL") {
+      attendee = `mailto:${alarm.attendee}`;
+    } else if (
+      alarm &&
+      alarm.attendee &&
+      alarm.action.toUpperCase() === "SMS"
+    ) {
+      attendee = `sms:${alarm.attendee}`;
+    } else {
+      throw new Error(
+        `Action can only be of type EMAIL or SMS: ${alarm.action}`
+      );
+    }
+
+    let valarm = "BEGIN:VALARM\n";
+    valarm += `ACTION:${alarm.action.toUpperCase()}\n`;
+    if (alarm && alarm.summary) {
+      valarm += `SUMMARY:${alarm.summary}\n`;
+    }
+    valarm += `ATTENDEE:${attendee}\n`;
+    valarm += `DESCRIPTION:${alarm.description}\n`;
+    valarm += `TRIGGER:${SimpleCalDAV.formatDateTime(alarm.trigger)}\n`;
+    valarm += `ENV:VALARM\n`;
+
+    return valarm;
+  }
+
+  static toVEVENT(evt, alarms) {
+    if ("uid" in evt && "start" in evt && "end" in evt && "summary" in evt) {
+      let vevent = "BEGIN:VCALENDAR\n";
+      vevent += "BEGIN:VEVENT\n";
+      vevent += `VERSION:2.0\n`;
+      vevent += `PRODID:${prodid}\n`;
+      vevent += "BEGIN:VEVENT\n";
+      vevent += `UID:${evt.uid}\n`;
+      vevent += `DTSTAMP:${SimpleCalDAV.formatDateTime(new Date())}\n`;
+      vevent += `DTSTART:${SimpleCalDAV.formatDateTime(evt.start)}\n`;
+      vevent += `DTEND:${SimpleCalDAV.formatDateTime(evt.end)}\n`;
+      vevent += `SUMMARY:${evt.summary}\n`;
+      if (alarms) {
+        vevent += alarms;
+      }
+      vevent += "END:VEVENT\n";
+      vevent += "END:VCALENDAR";
+      return vevent;
+    } else {
+      throw new Error("Mandatory keys in event missing");
+    }
+  }
+
+  async handleEvent(start, end, summary, alarms, method, uid = "") {
     if (!uid) {
       // NOTE: It's recommended to add a `@host.com` postfix to the uid. Since,
       // however, this lib will be used by a multitude of clients and since other
@@ -60,6 +112,11 @@ class SimpleCalDAV {
       // we've taken the freedom to leave it out too.
       uid = uuidv4();
     }
+    if (alarms) {
+      alarms = alarms.map(SimpleCalDAV.toVALARM);
+    }
+
+    const body = SimpleCalDAV.toVEVENT({ start, end, summary, uid }, alarms);
 
     let headers = {
       "Content-Type": "text/calendar; charset=utf-8"
@@ -77,23 +134,11 @@ class SimpleCalDAV {
     return await fetch(`${this.uri}/${uid}.ics`, {
       method: "PUT",
       headers,
-      // NOTE: Formating of BEGIN:VCALENDAR and END:VCALENDAR, needs to stay
-      // exactly like this, as the request is whitecase sensitive.
-      body: `BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:${prodid}
-BEGIN:VEVENT
-UID:${uid}
-DTSTAMP:${SimpleCalDAV.formatDateTime(new Date())}
-DTSTART:${SimpleCalDAV.formatDateTime(start)}
-DTEND:${SimpleCalDAV.formatDateTime(end)}
-SUMMARY:${summary}
-END:VEVENT
-END:VCALENDAR`
+      body
     });
   }
 
-  async listEvents(transform=SimpleCalDAV.simplifyEvents) {
+  async listEvents(transform = SimpleCalDAV.simplifyEvents) {
     const res = await fetch(this.uri, {
       method: "REPORT",
       headers: {
