@@ -76,7 +76,7 @@ class SimpleCalDAV {
     valarm += `ATTENDEE:${attendee}\n`;
     valarm += `DESCRIPTION:${alarm.description}\n`;
     valarm += `TRIGGER:${SimpleCalDAV.formatDateTime(alarm.trigger)}\n`;
-    valarm += `ENV:VALARM\n`;
+    valarm += `END:VALARM\n`;
 
     return valarm;
   }
