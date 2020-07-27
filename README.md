@@ -29,6 +29,10 @@ $ npm run test
 
 ## Changelog
 
+### 0.1.1
+
+- Allow adding VALARMS to VEVENTS
+
 ### 0.1.0
 
 - Transform ical.js events to simple JSON objects and all customizable
