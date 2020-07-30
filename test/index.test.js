@@ -80,6 +80,11 @@ test("fetching ics-incompatible response", async t => {
 
 test("fetching calendar single event", async t => {
   const summary = "Work on this lib";
+  const action = "EMAIL";
+  const attendee = "attendee";
+  const description = "description";
+  const time = "20200729T130856Z";
+  const subject = "bla";
   const worker = await createWorker(`
     app.report('/', function (req, res) {
       res.send(\`
@@ -120,6 +125,19 @@ LAST-MODIFIED:20200717T143454Z
 SUMMARY:${summary}
 TRANSP:OPAQUE
 X-MOZ-GENERATION:1
+BEGIN:VALARM
+ACTION:${action}
+ATTENDEE:${attendee}
+DESCRIPTION:${description}
+TRIGGER;VALUE=DATE-TIME:${time}
+END:VALARM
+BEGIN:VALARM
+ACTION:EMAIL
+ATTENDEE:mailto:me@example.com
+SUBJECT:${subject}
+DESCRIPTION:A email body
+TRIGGER;VALUE=DATE-TIME:20200729T140856Z
+END:VALARM
 END:VEVENT
 END:VCALENDAR</C:calendar-data>
          </prop>
@@ -138,6 +156,12 @@ END:VCALENDAR</C:calendar-data>
   t.assert(events[0].summary === summary);
   t.assert(events[0].start instanceof Date);
   t.assert(events[0].end instanceof Date);
+  t.assert(events[0].alarms.length === 2);
+  t.assert(events[0].alarms[0].action === action);
+  t.assert(events[0].alarms[0].attendee === attendee);
+  t.assert(events[0].alarms[0].trigger instanceof Date);
+
+  t.assert(events[0].alarms[1].subject === subject);
 });
 
 test("fetching calendar with multiple events", async t => {
@@ -509,6 +533,11 @@ test("getting etags with a sync token", async t => {
 });
 
 test("getting a single event", async t => {
+  const action = "EMAIL";
+  const attendee = "attendee";
+  const description = "description";
+  const time = "20200729T130856Z";
+  const subject = "bla";
   const worker = await createWorker(`
     app.get('/:uid', function (req, res) {
       res.status(201).send(\`BEGIN:VCALENDAR
@@ -521,10 +550,17 @@ DTEND:20200729T183000Z
 DTSTAMP:20200729T130856Z
 SUMMARY:new one
 BEGIN:VALARM
-ACTION:SMS
-ATTENDEE:sms:+123456789
-DESCRIPTION:a sms reminder
-TRIGGER;VALUE=DATE-TIME:20200729T130856Z
+ACTION:${action}
+ATTENDEE:${attendee}
+DESCRIPTION:${description}
+TRIGGER;VALUE=DATE-TIME:${time}
+END:VALARM
+BEGIN:VALARM
+ACTION:EMAIL
+ATTENDEE:mailto:me@example.com
+SUBJECT:${subject}
+DESCRIPTION:A email body
+TRIGGER;VALUE=DATE-TIME:20200729T140856Z
 END:VALARM
 END:VEVENT
 END:VCALENDAR\`);
@@ -536,4 +572,11 @@ END:VCALENDAR\`);
   t.assert("summary" in evt);
   t.assert("start" in evt);
   t.assert("end" in evt);
+  t.assert("alarms" in evt);
+  t.assert(evt.alarms.length === 2);
+  t.assert(evt.alarms[0].action === action);
+  t.assert(evt.alarms[0].attendee === attendee);
+  t.assert(evt.alarms[0].trigger instanceof Date);
+
+  t.assert(evt.alarms[1].subject === subject);
 });

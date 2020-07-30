@@ -197,8 +197,7 @@ class SimpleCalDAV {
 
     const comp = new ICAL.Component(parsedCal);
     const vevent = comp.getFirstSubcomponent("vevent");
-    const parsed = new ICAL.Event(vevent);
-    return parsed;
+    return vevent;
   }
 
   static genETag(s) {
@@ -206,11 +205,24 @@ class SimpleCalDAV {
   }
 
   static simplifyEvent(evt) {
-    return {
-      summary: evt.summary,
-      start: evt.startDate.toJSDate(),
-      end: evt.endDate.toJSDate()
-    };
+    let palarms = [];
+    let finalEvent = {};
+
+    let valarms = evt.getAllSubcomponents("valarm");
+    valarms = valarms.map(alarm => ({
+      action: alarm.getFirstPropertyValue("action"),
+      attendee: alarm.getFirstPropertyValue("attendee"),
+      description: alarm.getFirstPropertyValue("description"),
+      trigger: alarm.getFirstPropertyValue("trigger").toJSDate(),
+      subject: alarm.getFirstPropertyValue("subject")
+    }));
+    finalEvent.alarms = valarms;
+
+    const pevent = new ICAL.Event(evt);
+    finalEvent.summary = pevent.summary;
+    finalEvent.start = pevent.startDate.toJSDate();
+    finalEvent.end = pevent.endDate.toJSDate();
+    return finalEvent;
   }
 
   static traverseXML(doc, instruction) {
