@@ -1,5 +1,7 @@
 # simple-caldav
 
+[![npm version](https://badge.fury.io/js/simple-caldav.svg)](https://badge.fury.io/js/simple-caldav)
+
 > caldav in JavaScript; made easy.
 
 ## Note on Completeness
