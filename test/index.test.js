@@ -507,3 +507,33 @@ test("getting etags with a sync token", async t => {
   t.assert(emptyCol.syncToken === syncToken2);
   t.assert(emptyCol.collection.length === 0);
 });
+
+test("getting a single event", async t => {
+  const worker = await createWorker(`
+    app.get('/:uid', function (req, res) {
+      res.status(201).send(\`BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//TimDaub//simple-caldav//EN
+BEGIN:VEVENT
+UID:6720d455-76aa-4740-8766-c064df95bb3b
+DTSTART:20200729T180000Z
+DTEND:20200729T183000Z
+DTSTAMP:20200729T130856Z
+SUMMARY:new one
+BEGIN:VALARM
+ACTION:SMS
+ATTENDEE:sms:+123456789
+DESCRIPTION:a sms reminder
+TRIGGER;VALUE=DATE-TIME:20200729T130856Z
+END:VALARM
+END:VEVENT
+END:VCALENDAR\`);
+    });
+  `);
+  const URI = `http://localhost:${worker.port}`;
+  const dav = new SimpleCalDAV(URI);
+  const evt = await dav.getEvent("abc");
+  t.assert("summary" in evt);
+  t.assert("start" in evt);
+  t.assert("end" in evt);
+});

@@ -137,7 +137,19 @@ class SimpleCalDAV {
     });
   }
 
-  async listEvents(transform = SimpleCalDAV.simplifyEvents) {
+  async getEvent(uid, transform = SimpleCalDAV.simplifyEvent) {
+    const res = await fetch(`${this.uri}/${uid}.ics`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/xml; charset=utf-8"
+      }
+    });
+    let evt = await res.text();
+    evt = SimpleCalDAV.parseICS(evt);
+    return transform(evt);
+  }
+
+  async listEvents(transform = SimpleCalDAV.simplifyEvent) {
     const res = await fetch(this.uri, {
       method: "REPORT",
       headers: {
@@ -166,7 +178,7 @@ class SimpleCalDAV {
     if (events.length === 0) {
       return [];
     } else {
-      return transform(events.map(SimpleCalDAV.parseICS));
+      return events.map(SimpleCalDAV.parseICS).map(transform);
     }
   }
 
@@ -193,12 +205,12 @@ class SimpleCalDAV {
     return sha1(s);
   }
 
-  static simplifyEvents(events) {
-    return events.map(evt => ({
+  static simplifyEvent(evt) {
+    return {
       summary: evt.summary,
       start: evt.startDate.toJSDate(),
       end: evt.endDate.toJSDate()
-    }));
+    };
   }
 
   static traverseXML(doc, instruction) {
