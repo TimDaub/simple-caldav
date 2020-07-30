@@ -227,12 +227,32 @@ class SimpleCalDAV {
 
   static traverseXML(doc, instruction) {
     for (const [key, path] of Object.entries(instruction)) {
+      if (typeof instruction[key].isArray !== "function") {
+        instruction[key] = [];
+      }
+
       const nodes = xpath.select(path, doc);
-      if (!nodes.length) {
+      if (typeof nodes === "boolean" || typeof nodes === "number") {
+        instruction[key] = nodes;
+      }
+
+      if (
+        typeof nodes.isArray === "function" &&
+        nodes.isArray() &&
+        !nodes.length
+      ) {
         instruction[key] = [];
         console.warn(`Couldn't find path from instruction: ${path}`);
       } else {
-        instruction[key] = nodes.map(n => n.nodeValue);
+        for (let i = 0; i < nodes.length; i++) {
+          const node = nodes[i];
+
+          if (node.nodeValue) {
+            instruction[key].push(node.nodeValue);
+          } else {
+            instruction[key].push(node);
+          }
+        }
       }
     }
 
@@ -322,18 +342,28 @@ class SimpleCalDAV {
     const values = SimpleCalDAV.traverseXML(doc, instruction);
 
     let collection = [];
-    for (let i = 0; i < values.href.length; i++) {
-      let [_, statusCode] = values.status[i].match(
+    let hrefCount = 0;
+    let etagCount = 0;
+    let statusCount = 0;
+    while (
+      hrefCount < values.href.length &&
+      etagCount < values.etag.length &&
+      statusCount < values.status.length
+    ) {
+      let resource = {};
+      let [_, statusCode] = values.status[statusCount].match(
         new RegExp("HTTP\\/1\\.1 (\\d{3})")
       );
       statusCode = parseInt(statusCode, 10);
+      resource.statusCode = statusCode;
+      statusCount++;
 
-      let resource = {
-        href: values.href[i],
-        statusCode
-      };
-      if (statusCode === 200 && values.etag[i]) {
-        resource.etag = values.etag[i];
+      resource.href = values.href[hrefCount];
+      hrefCount++;
+
+      if (statusCode === 200 && values.etag[etagCount]) {
+        resource.etag = values.etag[etagCount];
+        etagCount++;
       }
 
       collection.push(resource);

@@ -309,6 +309,31 @@ test("traversing a correct XML tree", async t => {
   t.assert(content.abc[1] === expected2);
 });
 
+test.skip("traversing a correct XML tree where values are missing", async t => {
+  const s = `<?xml version="1.0" encoding="UTF-8"?>
+    <res>
+      <key2>value2</key2>
+      <status>missing</status>
+    </res>
+    <res>
+      <key1>value1</key1>
+      <key2>value2</key2>
+    </res>
+  `;
+  const doc = new dom().parseFromString(s, "text/xml");
+
+  const instruction = {
+    key1: "//*[local-name()='key1']/text()",
+    key2: "//*[local-name(.)='key2']/text()",
+  };
+  const content = SimpleCalDAV.traverseXML(doc, instruction);
+  console.log(content);
+  t.assert(content.key1[0] === null);
+  t.assert(content.key1[1] === "value1");
+  t.assert(content.key2[0] === "value1");
+  t.assert(content.key2[1] === "value2");
+});
+
 test("traversing an incorrect XML tree", async t => {
   const expected = "def";
   const expected2 = "lel";
@@ -480,7 +505,7 @@ test("getting sync token", async t => {
   t.assert(token.displayName === displayName);
 });
 
-test("getting etags with a sync token", async t => {
+test("getting collection with a sync token", async t => {
   const href = "https://example.com";
   const etag = "etag";
   const status = "HTTP/1.1 200";
@@ -579,4 +604,43 @@ END:VCALENDAR\`);
   t.assert(evt.alarms[0].trigger instanceof Date);
 
   t.assert(evt.alarms[1].subject === subject);
+});
+
+test("if syncCollection returns collection with correctly ordered properties", async t => {
+  const href = "1";
+  const href2 = "2";
+  const etag = "etag";
+  const worker = await createWorker(
+    `
+    app.report('/', function (req, res) {
+      res.status(201).send(\`<?xml version='1.0' encoding='utf-8'?>
+<multistatus xmlns="DAV:">
+  <sync-token>1</sync-token>
+  <response>
+    <href>${href}</href>
+    <propstat>
+      <status>HTTP/1.1 404 Not Found</status>
+    </propstat>
+  </response>
+  <response>
+    <href>${href2}</href>
+    <propstat>
+      <prop>
+        <getetag>${etag}</getetag>
+      </prop>
+      <status>HTTP/1.1 200 OK</status>
+    </propstat>
+  </response>
+</multistatus>\`);
+    });
+  `)
+  const URI = `http://localhost:${worker.port}`;
+  const dav = new SimpleCalDAV(URI);
+  const col = await dav.syncCollection();
+  t.assert(col.collection[0].statusCode === 404);
+  t.assert(col.collection[0].href === href);
+  t.assert(!col.collection[0].etag);
+  t.assert(col.collection[1].statusCode === 200);
+  t.assert(col.collection[1].href === href2);
+  t.assert(col.collection[1].etag === etag);
 });
