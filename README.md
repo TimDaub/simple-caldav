@@ -31,6 +31,11 @@ $ npm run test
 
 ## Changelog
 
+### 0.2.1
+
+- Introduce new method for retrieving single events with `uid`: `getEvent(uid)`
+- Parse and include `VALARM`s in `getEvent` and `listEvents`
+
 ### 0.2.0
 
 - Removed `TraversalError` from code base entirely
