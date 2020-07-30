@@ -31,6 +31,11 @@ $ npm run test
 
 ## Changelog
 
+### 0.2.2
+
+- Bug fix: Ensure correct order of `etag` and `href` properties returned from
+  `syncCollection`
+
 ### 0.2.1
 
 - Introduce new method for retrieving single events with `uid`: `getEvent(uid)`
