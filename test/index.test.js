@@ -6,7 +6,7 @@ const moment = require("moment");
 
 const {
   SimpleCalDAV,
-  errors: { ParserError }
+  errors: { ParserError, ServerError }
 } = require("../src/index.js");
 
 test("if parameters are correctly stored", t => {
@@ -22,6 +22,7 @@ test("if objects are correctly exported", t => {
   t.assert("errors" in libObj);
   t.assert("SimpleCalDAV" in libObj);
   t.assert("ParserError" in libObj.errors);
+  t.assert("ServerError" in libObj.errors);
 });
 
 test("test fetching empty calendar", async t => {

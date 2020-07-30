@@ -360,6 +360,7 @@ class SimpleCalDAV {
 module.exports = {
   SimpleCalDAV,
   errors: {
-    ParserError
+    ParserError,
+    ServerError
   }
 };
