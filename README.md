@@ -29,6 +29,18 @@ $ npm run test
 
 ## Changelog
 
+### 0.2.0
+
+- Removed `TraversalError` from code base entirely
+- `listEvents` now returns an empty array when no events are found or an invalid
+xml gets passed
+- Instead of throwing `TraversalError`, `SimpleCalDAV.traverseXML` now returns
+an empty array when path couldn't be found
+- Added `getSyncToken` method to retrieve a sync token from a server
+- Added `syncCollection` to receive a diff of an entire collection with a sync
+token
+- Added `ServerError` that is thrown when there are problems with the server
+
 ### 0.1.3
 
 - Fix bug in VALARM construction
