@@ -6,7 +6,7 @@ const moment = require("moment");
 
 const {
   SimpleCalDAV,
-  errors: { ParserError, TraversalError }
+  errors: { ParserError }
 } = require("../src/index.js");
 
 test("if parameters are correctly stored", t => {
@@ -22,7 +22,6 @@ test("if objects are correctly exported", t => {
   t.assert("errors" in libObj);
   t.assert("SimpleCalDAV" in libObj);
   t.assert("ParserError" in libObj.errors);
-  t.assert("TraversalError" in libObj.errors);
 });
 
 test("test fetching empty calendar", async t => {
@@ -61,7 +60,7 @@ test("test fetching empty calendar", async t => {
   );
 });
 
-test("fetching no ics compatible response", async t => {
+test("fetching ics-incompatible response", async t => {
   const worker = await createWorker(`
     app.report('/', function (req, res) {
       res.send(\`
@@ -74,12 +73,8 @@ test("fetching no ics compatible response", async t => {
 
   const URI = `http://localhost:${worker.port}`;
   const dav = new SimpleCalDAV(URI);
-  await t.throwsAsync(
-    async () => {
-      await dav.listEvents();
-    },
-    { instanceOf: TraversalError }
-  );
+  const events = await dav.listEvents();
+  t.assert(events.length === 0);
 });
 
 test("fetching calendar single event", async t => {
@@ -297,13 +292,8 @@ test("traversing an incorrect XML tree", async t => {
 	</incorrect>
   `;
   const doc = new dom().parseFromString(s);
-
-  t.throws(
-    () => {
-      SimpleCalDAV.traverseXML(doc, { test: "123" });
-    },
-    { instanceOf: TraversalError }
-  );
+  const res = SimpleCalDAV.traverseXML(doc, { test: "123" });
+  t.assert(res.test.length === 0);
 });
 
 test("synching etag", async t => {
@@ -434,4 +424,85 @@ test("transforming an sms alarm into a VALARM", t => {
   t.assert(new RegExp(`DESCRIPTION:${alarm.description}`).test(valarm));
   t.assert(new RegExp("TRIGGER:\\d{8}T\\d{6}Z").test(valarm));
   t.assert(new RegExp(`ATTENDEE:sms:${alarm.attendee}`).test(valarm));
+});
+
+test("getting sync token", async t => {
+  const syncToken = "abc";
+  const displayName = "displayname";
+  const worker = await createWorker(`
+    app.propfind('/', function (req, res) {
+      res.status(201).send(\`<?xml version='1.0' encoding='utf-8'?>
+<multistatus xmlns="DAV:" xmlns:CS="http://calendarserver.org/ns/">
+  <response>
+    <href>/radicale/example%40gmail.com/8409b6d2-8dcc-997b-45d6-517801237d38/</href>
+    <propstat>
+      <prop>
+        <displayname>${displayName}</displayname>
+        <CS:getctag>"09aad437ed2e4b4cd8d700ad410385d9b13e9fd964862d7f2987e4c844237465"</CS:getctag>
+        <sync-token>${syncToken}</sync-token>
+      </prop>
+      <status>HTTP/1.1 200 OK</status>
+    </propstat>
+  </response>
+</multistatus>
+      \`);
+    });
+  `);
+  const URI = `http://localhost:${worker.port}`;
+  const dav = new SimpleCalDAV(URI);
+  const token = await dav.getSyncToken();
+  t.assert(token.syncToken === syncToken);
+  t.assert(token.displayName === displayName);
+});
+
+test("getting etags with a sync token", async t => {
+  const href = "https://example.com";
+  const etag = "etag";
+  const status = "HTTP/1.1 200";
+  const syncToken1 = "1";
+  const syncToken2 = "2";
+
+  // TODO: Also implement test for 404 asset
+  const worker = await createWorker(
+    `
+    let counter = 0;
+    app.report('/', function (req, res) {
+      if (counter === 0) {
+        res.status(201).send(\`<?xml version='1.0' encoding='utf-8'?>
+<multistatus xmlns="DAV:">
+  <sync-token>${syncToken1}</sync-token>
+  <response>
+    <href>${href}</href>
+    <propstat>
+      <prop>
+        <getetag>${etag}</getetag>
+      </prop>
+      <status>${status}</status>
+    </propstat>
+  </response>
+</multistatus>
+        \`);
+      } else if (counter === 1) {
+        res.status(201).send(\`<?xml version='1.0' encoding='utf-8'?>
+<multistatus xmlns="DAV:">
+  <sync-token>${syncToken2}</sync-token>
+</multistatus>
+        \`);
+      }
+      counter++;
+    });
+  `,
+    2
+  );
+  const URI = `http://localhost:${worker.port}`;
+  const dav = new SimpleCalDAV(URI);
+  const col = await dav.syncCollection();
+  t.assert(col.syncToken === syncToken1);
+  t.assert(col.collection.length === 1);
+  t.assert(col.collection[0].href === href);
+  t.assert(col.collection[0].etag === etag);
+  t.assert(col.collection[0].statusCode === 200);
+  const emptyCol = await dav.syncCollection(col.syncToken);
+  t.assert(emptyCol.syncToken === syncToken2);
+  t.assert(emptyCol.collection.length === 0);
 });
