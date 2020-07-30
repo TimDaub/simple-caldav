@@ -13,6 +13,18 @@ const sha1 = require("sha1");
 const prodid = "-//TimDaub//simple-caldav//EN";
 const dateTimeFormat = "YMMDDTHHmmss[Z]";
 
+class ServerError extends Error {
+  constructor(...params) {
+    super(...params);
+
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, ServerError);
+    }
+
+    this.name = "ServerError";
+  }
+}
+
 class ParserError extends Error {
   constructor(...params) {
     super(...params);
@@ -22,18 +34,6 @@ class ParserError extends Error {
     }
 
     this.name = "ParserError";
-  }
-}
-
-class TraversalError extends Error {
-  constructor(...params) {
-    super(...params);
-
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, TraversalError);
-    }
-
-    this.name = "TraversalError";
   }
 }
 
@@ -163,7 +163,11 @@ class SimpleCalDAV {
     };
 
     let { events } = SimpleCalDAV.traverseXML(doc, instruction);
-    return transform(events.map(SimpleCalDAV.parseICS));
+    if (events.length === 0) {
+      return [];
+    } else {
+      return transform(events.map(SimpleCalDAV.parseICS));
+    }
   }
 
   static parseICS(evt) {
@@ -201,11 +205,11 @@ class SimpleCalDAV {
     for (const [key, path] of Object.entries(instruction)) {
       const nodes = xpath.select(path, doc);
       if (!nodes.length) {
-        throw new TraversalError(
-          `Couldn't find path from instruction: ${path}`
-        );
+        instruction[key] = [];
+        console.warn(`Couldn't find path from instruction: ${path}`);
+      } else {
+        instruction[key] = nodes.map(n => n.nodeValue);
       }
-      instruction[key] = nodes.map(n => n.nodeValue);
     }
 
     return instruction;
@@ -218,6 +222,104 @@ class SimpleCalDAV {
     return date.utc().format(dateTimeFormat);
   }
 
+  async getSyncToken() {
+    const res = await fetch(this.uri, {
+      method: "PROPFIND",
+      headers: {
+        Depth: 0,
+        "Content-Type": "application/xml; charset=utf-8"
+      },
+      body: `
+        <d:propfind xmlns:d="DAV:" xmlns:cs="http://calendarserver.org/ns/">
+          <d:prop>
+            <d:displayname />
+            <cs:getctag />
+            <d:sync-token />
+          </d:prop>
+        </d:propfind>
+      `
+    });
+    const text = await res.text();
+
+    const instruction = {
+      syncToken: "//*[local-name()='sync-token']/text()",
+      displayName: "//*[local-name()='displayname']/text()"
+    };
+    const doc = new dom().parseFromString(text);
+    const tokens = SimpleCalDAV.traverseXML(doc, instruction);
+
+    // NOTE: For radicale, each calendar has its own resource URI. This means
+    // requesting the sync token will never yield more than one display name or
+    // syncToken.
+    return {
+      syncToken: tokens.syncToken[0],
+      displayName: tokens.displayName[0]
+    };
+  }
+
+  async syncCollection(syncToken) {
+    let body;
+    if (syncToken) {
+      body = `<?xml version="1.0" encoding="utf-8" ?>
+<d:sync-collection xmlns:d="DAV:">
+  <d:sync-token>${syncToken}</d:sync-token>
+  <d:sync-level>1</d:sync-level>
+  <d:prop>
+    <d:getetag/>
+  </d:prop>
+</d:sync-collection>`;
+    } else {
+      body = `<?xml version="1.0" encoding="utf-8" ?>
+<d:sync-collection xmlns:d="DAV:">
+  <d:sync-token/>
+  <d:sync-level>1</d:sync-level>
+  <d:prop>
+    <d:getetag/>
+  </d:prop>
+</d:sync-collection>
+      `;
+    }
+    const res = await fetch(this.uri, {
+      method: "REPORT",
+      headers: {
+        "Content-Type": "application/xml; charset=utf-8"
+      },
+      body
+    });
+
+    const text = await res.text();
+    const instruction = {
+      syncToken: "//*[local-name()='sync-token']/text()",
+      href: "//*[local-name()='href']/text()",
+      etag: "//*[local-name()='getetag']/text()",
+      status: "//*[local-name()='status']/text()"
+    };
+    const doc = new dom().parseFromString(text);
+    const values = SimpleCalDAV.traverseXML(doc, instruction);
+
+    let collection = [];
+    for (let i = 0; i < values.href.length; i++) {
+      let [_, statusCode] = values.status[i].match(
+        new RegExp("HTTP\\/1\\.1 (\\d{3})")
+      );
+      statusCode = parseInt(statusCode, 10);
+
+      let resource = {
+        href: values.href[i],
+        statusCode
+      };
+      if (statusCode === 200 && values.etag[i]) {
+        resource.etag = values.etag[i];
+      }
+
+      collection.push(resource);
+    }
+    return {
+      syncToken: values.syncToken[0],
+      collection
+    };
+  }
+
   async getETags() {
     const cal = await fetch(this.uri, {
       method: "REPORT",
@@ -226,7 +328,7 @@ class SimpleCalDAV {
       },
       body: `
         <c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
-           <d:prop>
+          <d:prop>
             <d:getetag />
           </d:prop>
           <c:filter>
@@ -234,6 +336,10 @@ class SimpleCalDAV {
           </c:filter>
         </c:calendar-query>`
     });
+
+    if (cal.status >= 500) {
+      throw new ServerError(`The server wasn't able to handle the request.`);
+    }
 
     const text = await cal.text();
     // NOTE: For some reason, etags currently come with double quotes from the
@@ -255,6 +361,6 @@ module.exports = {
   SimpleCalDAV,
   errors: {
     ParserError,
-    TraversalError
+    ServerError
   }
 };
