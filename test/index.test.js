@@ -78,6 +78,147 @@ test("fetching ics-incompatible response", async t => {
   t.assert(events.length === 0);
 });
 
+test("fetching calendar single event without an alarm", async t => {
+  const summary = "Work on this lib";
+  const action = "EMAIL";
+  const attendee = "attendee";
+  const description = "description";
+  const time = "20200729T130856Z";
+  const subject = "bla";
+  const worker = await createWorker(`
+    app.report('/', function (req, res) {
+      res.send(\`
+<?xml version="1.0" encoding="UTF-8"?>
+<multistatus xmlns="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+   <response>
+      <href>/radicale/example%40gmail.com/8409b6d2-8dcc-997b-45d6-517801237d38/50113370-f61f-4444-9e94-e3ba1d2467b8.ics</href>
+      <propstat>
+         <prop>
+            <getetag>"aa98130e9fac911f70a73dac8b57e58a482b04ec4b8a5417dfedf8f42069c6d0"</getetag>
+            <C:calendar-data>BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Mozilla.org/NONSGML Mozilla Calendar V1.1//EN
+BEGIN:VTIMEZONE
+TZID:Europe/Berlin
+BEGIN:STANDARD
+DTSTART:19701025T030000
+RRULE:FREQ=YEARLY;BYDAY=-1SU;BYMONTH=10
+TZNAME:CET
+TZOFFSETFROM:+0200
+TZOFFSETTO:+0100
+END:STANDARD
+BEGIN:DAYLIGHT
+DTSTART:19700329T020000
+RRULE:FREQ=YEARLY;BYDAY=-1SU;BYMONTH=3
+TZNAME:CEST
+TZOFFSETFROM:+0100
+TZOFFSETTO:+0200
+END:DAYLIGHT
+END:VTIMEZONE
+BEGIN:VEVENT
+UID:50113370-f61f-4444-9e94-e3ba1d2467b8
+DTSTART;TZID=Europe/Berlin:20200717T100000
+DTEND;TZID=Europe/Berlin:20200717T133000
+CREATED:20200717T143449Z
+DTSTAMP:20200717T143454Z
+LAST-MODIFIED:20200717T143454Z
+SUMMARY:${summary}
+TRANSP:OPAQUE
+X-MOZ-GENERATION:1
+END:VEVENT
+END:VCALENDAR</C:calendar-data>
+         </prop>
+         <status>HTTP/1.1 200 OK</status>
+      </propstat>
+   </response>
+</multistatus>
+      \`); 
+    });
+  `);
+
+  const URI = `http://localhost:${worker.port}`;
+  const dav = new SimpleCalDAV(URI);
+  const events = await dav.listEvents();
+  t.assert(events.length === 1);
+  t.assert(events[0].summary === summary);
+  t.assert(events[0].start instanceof Date);
+  t.assert(events[0].end instanceof Date);
+  t.assert(events[0].alarms.length === 0);
+});
+
+test("fetching calendar single event with a relative alarm trigger", async t => {
+  const summary = "Work on this lib";
+  const action = "EMAIL";
+  const attendee = "attendee";
+  const description = "description";
+  const time = "20200729T130856Z";
+  const subject = "bla";
+  const worker = await createWorker(`
+    app.report('/', function (req, res) {
+      res.send(\`
+<?xml version="1.0" encoding="UTF-8"?>
+<multistatus xmlns="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+   <response>
+      <href>/radicale/example%40gmail.com/8409b6d2-8dcc-997b-45d6-517801237d38/50113370-f61f-4444-9e94-e3ba1d2467b8.ics</href>
+      <propstat>
+         <prop>
+            <getetag>"aa98130e9fac911f70a73dac8b57e58a482b04ec4b8a5417dfedf8f42069c6d0"</getetag>
+            <C:calendar-data>BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Mozilla.org/NONSGML Mozilla Calendar V1.1//EN
+BEGIN:VTIMEZONE
+TZID:Europe/Berlin
+BEGIN:STANDARD
+DTSTART:19701025T030000
+RRULE:FREQ=YEARLY;BYDAY=-1SU;BYMONTH=10
+TZNAME:CET
+TZOFFSETFROM:+0200
+TZOFFSETTO:+0100
+END:STANDARD
+BEGIN:DAYLIGHT
+DTSTART:19700329T020000
+RRULE:FREQ=YEARLY;BYDAY=-1SU;BYMONTH=3
+TZNAME:CEST
+TZOFFSETFROM:+0100
+TZOFFSETTO:+0200
+END:DAYLIGHT
+END:VTIMEZONE
+BEGIN:VEVENT
+UID:50113370-f61f-4444-9e94-e3ba1d2467b8
+DTSTART;TZID=Europe/Berlin:20200717T100000
+DTEND;TZID=Europe/Berlin:20200717T133000
+CREATED:20200717T143449Z
+DTSTAMP:20200717T143454Z
+LAST-MODIFIED:20200717T143454Z
+SUMMARY:${summary}
+TRANSP:OPAQUE
+X-MOZ-GENERATION:1
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Mozilla Standardbeschreibung
+TRIGGER:-PT15M
+END:VALARM
+END:VEVENT
+END:VCALENDAR</C:calendar-data>
+         </prop>
+         <status>HTTP/1.1 200 OK</status>
+      </propstat>
+   </response>
+</multistatus>
+      \`); 
+    });
+  `);
+
+  const URI = `http://localhost:${worker.port}`;
+  const dav = new SimpleCalDAV(URI);
+  const events = await dav.listEvents();
+  t.assert(events.length === 1);
+  t.assert(events[0].summary === summary);
+  t.assert(events[0].start instanceof Date);
+  t.assert(events[0].end instanceof Date);
+  t.assert(events[0].alarms.length === 0);
+});
+
 test("fetching calendar single event", async t => {
   const summary = "Work on this lib";
   const action = "EMAIL";
@@ -324,7 +465,7 @@ test.skip("traversing a correct XML tree where values are missing", async t => {
 
   const instruction = {
     key1: "//*[local-name()='key1']/text()",
-    key2: "//*[local-name(.)='key2']/text()",
+    key2: "//*[local-name(.)='key2']/text()"
   };
   const content = SimpleCalDAV.traverseXML(doc, instruction);
   console.log(content);
@@ -633,7 +774,8 @@ test("if syncCollection returns collection with correctly ordered properties", a
   </response>
 </multistatus>\`);
     });
-  `)
+  `
+  );
   const URI = `http://localhost:${worker.port}`;
   const dav = new SimpleCalDAV(URI);
   const col = await dav.syncCollection();

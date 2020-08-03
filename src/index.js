@@ -209,13 +209,30 @@ class SimpleCalDAV {
     let finalEvent = {};
 
     let valarms = evt.getAllSubcomponents("valarm");
-    valarms = valarms.map(alarm => ({
-      action: alarm.getFirstPropertyValue("action"),
-      attendee: alarm.getFirstPropertyValue("attendee"),
-      description: alarm.getFirstPropertyValue("description"),
-      trigger: alarm.getFirstPropertyValue("trigger").toJSDate(),
-      subject: alarm.getFirstPropertyValue("subject")
-    }));
+    valarms = valarms
+      .map(alarm => {
+        let trigger;
+        try {
+          trigger = alarm.getFirstPropertyValue("trigger").toJSDate();
+        } catch (err) {
+          if (err instanceof TypeError) {
+            console.warn("Skipping VALARM because TRIGGER not parseable");
+            // NOTE: ical.js cannot parse relative at the moment: https://github.com/mozilla-comm/ical.js/issues/451
+            return;
+          } else {
+            console.log(err);
+          }
+        }
+
+        return {
+          action: alarm.getFirstPropertyValue("action"),
+          attendee: alarm.getFirstPropertyValue("attendee"),
+          description: alarm.getFirstPropertyValue("description"),
+          trigger,
+          subject: alarm.getFirstPropertyValue("subject")
+        };
+      })
+      .filter(alarm => !!alarm);
     finalEvent.alarms = valarms;
 
     const pevent = new ICAL.Event(evt);
