@@ -31,6 +31,12 @@ $ npm run test
 
 ## Changelog
 
+### 0.3.0
+
+- Bug fix: Stop attempting to parse relative-time VALARMS, as [ical.js
+  isn't capable of doing that
+  either](https://github.com/mozilla-comm/ical.js/issues/451). Relative-time VALARMS are now ignored instead. Previously they threw.
+
 ### 0.2.2
 
 - Bug fix: Ensure correct order of `etag` and `href` properties returned from
