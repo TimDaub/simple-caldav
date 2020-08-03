@@ -475,18 +475,6 @@ test.skip("traversing a correct XML tree where values are missing", async t => {
   t.assert(content.key2[1] === "value2");
 });
 
-test("traversing an incorrect XML tree", async t => {
-  const expected = "def";
-  const expected2 = "lel";
-  const s = `<?xml version="1.0" encoding="UTF-8"?>
-	<incorrect>
-	</incorrect>
-  `;
-  const doc = new dom().parseFromString(s);
-  const res = SimpleCalDAV.traverseXML(doc, { test: "123" });
-  t.assert(res.test.length === 0);
-});
-
 test("synching etag", async t => {
   const etag1 = "etag1";
   const etag2 = "etag2";
