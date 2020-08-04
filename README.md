@@ -31,6 +31,11 @@ $ npm run test
 
 ## Changelog
 
+### 0.3.1
+
+- Bug fix: `syncCollection` wasn't able to detect a single VEVENT deletion event
+and simply returned an empty array. 
+
 ### 0.3.0
 
 - Bug fix: Stop attempting to parse relative-time VALARMS, as [ical.js
