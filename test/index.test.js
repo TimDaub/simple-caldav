@@ -774,3 +774,28 @@ test("if syncCollection returns collection with correctly ordered properties", a
   t.assert(col.collection[1].href === href2);
   t.assert(col.collection[1].etag === etag);
 });
+
+test("if single deletion response is detected by parser", async t => {
+  const worker = await createWorker(
+    `
+    app.report('/', function (req, res) {
+      res.status(201).send(\`<?xml version='1.0' encoding='utf-8'?>
+<multistatus xmlns="DAV:">
+  <sync-token>1</sync-token>
+  <response>
+    <href>a</href>
+    <propstat>
+      <status>HTTP/1.1 404 Not Found</status>
+    </propstat>
+  </response>
+</multistatus>\`);
+    });
+  `
+  );
+  const URI = `http://localhost:${worker.port}`;
+  const dav = new SimpleCalDAV(URI);
+  const { collection } = await dav.syncCollection();
+  t.assert(collection.length == 1);
+  t.assert(collection[0].href === "a");
+  t.assert(collection[0].statusCode === 404);
+});

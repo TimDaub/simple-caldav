@@ -276,6 +276,8 @@ class SimpleCalDAV {
     return instruction;
   }
 
+  // NOTE: Formatting to ical's special datetime means losing milli-second
+  // precision!
   static formatDateTime(dateTime) {
     // NOTE: See https://tools.ietf.org/html/rfc5545 under:
     // "FORM #2: DATE WITH UTC TIME"
@@ -363,8 +365,7 @@ class SimpleCalDAV {
     let etagCount = 0;
     let statusCount = 0;
     while (
-      hrefCount < values.href.length &&
-      etagCount < values.etag.length &&
+      (hrefCount < values.href.length && etagCount < values.etag.length) ||
       statusCount < values.status.length
     ) {
       let resource = {};
