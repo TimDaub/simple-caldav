@@ -21,6 +21,12 @@ $ npm i --save simple-caldav
 
 For now, see [tests](./test/index.test.js).
 
+### Notes
+
+- We translate a VEVENT's `STATUS` in the whole library to the name
+  `_status` to make sure we're not violating any [reserved words rules of
+  JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar#Keywords).
+
 ## Contributing
 
 ```bash
@@ -30,6 +36,10 @@ $ npm run test
 ```
 
 ## Changelog
+
+### 0.3.1
+
+- Add `_status` property to event.
 
 ### 0.3.1
 

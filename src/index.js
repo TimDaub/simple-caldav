@@ -12,6 +12,8 @@ const sha1 = require("sha1");
 
 const prodid = "-//TimDaub//simple-caldav//EN";
 const dateTimeFormat = "YMMDDTHHmmss[Z]";
+// NOTE: https://tools.ietf.org/html/rfc5545#section-3.8.1.11
+const allowedVEVENTStatus = ["TENTATIVE", "CONFIRMED", "CANCELED"];
 
 class ServerError extends Error {
   constructor(...params) {
@@ -42,14 +44,22 @@ class SimpleCalDAV {
     this.uri = uri;
   }
 
-  async createEvent(start, end, summary, alarms) {
-    return this.handleEvent(start, end, summary, alarms, "create");
+  async createEvent(start, end, summary, alarms, _status) {
+    return this.handleEvent(start, end, summary, alarms, _status, "create");
   }
 
   // TODO: Do we want to make this method more convenient by allowing partial
   // updates?
-  async updateEvent(uid, start, end, summary, alarms) {
-    return this.handleEvent(start, end, summary, alarms, "update", uid);
+  async updateEvent(uid, start, end, summary, alarms, _status) {
+    return this.handleEvent(
+      start,
+      end,
+      summary,
+      alarms,
+      _status,
+      "update",
+      uid
+    );
   }
 
   static toVALARM(alarm) {
@@ -95,15 +105,24 @@ class SimpleCalDAV {
       if (alarms) {
         vevent += alarms;
       }
+      if (evt._status) {
+        if (allowedVEVENTStatus.includes(evt._status)) {
+          vevent += `STATUS:${evt._status}`;
+        } else {
+          throw new ParserError(
+            `Your status "${evt._status}" is not an allowed status for a VEVENT`
+          );
+        }
+      }
       vevent += "END:VEVENT\n";
       vevent += "END:VCALENDAR";
       return vevent;
     } else {
-      throw new Error("Mandatory keys in event missing");
+      throw new ParserError("Mandatory keys in event missing");
     }
   }
 
-  async handleEvent(start, end, summary, alarms, method, uid = "") {
+  async handleEvent(start, end, summary, alarms, _status, method, uid = "") {
     if (!uid) {
       // NOTE: It's recommended to add a `@host.com` postfix to the uid. Since,
       // however, this lib will be used by a multitude of clients and since other
@@ -115,7 +134,10 @@ class SimpleCalDAV {
       alarms = alarms.map(SimpleCalDAV.toVALARM);
     }
 
-    const body = SimpleCalDAV.toVEVENT({ start, end, summary, uid }, alarms);
+    const body = SimpleCalDAV.toVEVENT(
+      { start, end, summary, uid, _status },
+      alarms
+    );
 
     let headers = {
       "Content-Type": "text/calendar; charset=utf-8"
@@ -239,6 +261,8 @@ class SimpleCalDAV {
     finalEvent.summary = pevent.summary;
     finalEvent.start = pevent.startDate.toJSDate();
     finalEvent.end = pevent.endDate.toJSDate();
+    // NOTE: https://github.com/mozilla-comm/ical.js/issues/452
+    finalEvent._status = pevent._firstProp("status");
     return finalEvent;
   }
 

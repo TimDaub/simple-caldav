@@ -122,6 +122,7 @@ DTEND;TZID=Europe/Berlin:20200717T133000
 CREATED:20200717T143449Z
 DTSTAMP:20200717T143454Z
 LAST-MODIFIED:20200717T143454Z
+STATUS:TENTATIVE
 SUMMARY:${summary}
 TRANSP:OPAQUE
 X-MOZ-GENERATION:1
@@ -144,6 +145,7 @@ END:VCALENDAR</C:calendar-data>
   t.assert(events[0].start instanceof Date);
   t.assert(events[0].end instanceof Date);
   t.assert(events[0].alarms.length === 0);
+  t.assert(events[0]._status === "TENTATIVE");
 });
 
 test("fetching calendar single event with a relative alarm trigger", async t => {
@@ -191,6 +193,7 @@ CREATED:20200717T143449Z
 DTSTAMP:20200717T143454Z
 LAST-MODIFIED:20200717T143454Z
 SUMMARY:${summary}
+STATUS:CONFIRMED
 TRANSP:OPAQUE
 X-MOZ-GENERATION:1
 BEGIN:VALARM
@@ -217,6 +220,7 @@ END:VCALENDAR</C:calendar-data>
   t.assert(events[0].start instanceof Date);
   t.assert(events[0].end instanceof Date);
   t.assert(events[0].alarms.length === 0);
+  t.assert(events[0]._status === "CONFIRMED");
 });
 
 test("fetching calendar single event", async t => {
@@ -266,6 +270,7 @@ LAST-MODIFIED:20200717T143454Z
 SUMMARY:${summary}
 TRANSP:OPAQUE
 X-MOZ-GENERATION:1
+STATUS:CONFIRMED
 BEGIN:VALARM
 ACTION:${action}
 ATTENDEE:${attendee}
@@ -297,6 +302,7 @@ END:VCALENDAR</C:calendar-data>
   t.assert(events[0].summary === summary);
   t.assert(events[0].start instanceof Date);
   t.assert(events[0].end instanceof Date);
+  t.assert(events[0]._status === "CONFIRMED");
   t.assert(events[0].alarms.length === 2);
   t.assert(events[0].alarms[0].action === action);
   t.assert(events[0].alarms[0].attendee === attendee);
@@ -339,6 +345,7 @@ TZOFFSETTO:+0200
 END:DAYLIGHT
 END:VTIMEZONE
 BEGIN:VEVENT
+STATUS:TENTATIVE
 UID:50113370-f61f-4444-9e94-e3ba1d2467b8
 DTSTART;TZID=Europe/Berlin:20200717T100000
 DTEND;TZID=Europe/Berlin:20200717T133000
@@ -380,6 +387,7 @@ TZOFFSETTO:+0200
 END:DAYLIGHT
 END:VTIMEZONE
 BEGIN:VEVENT
+STATUS:CONFIRMED
 UID:105b112e-7d65-3147-a182-deaf17d08a12
 DTSTART;TZID=Europe/Berlin:20200718T094500
 DTEND;TZID=Europe/Berlin:20200718T131500
@@ -407,6 +415,8 @@ END:VCALENDAR</C:calendar-data>
   t.assert(events[0].summary === summary);
   t.assert(events[0].start instanceof Date);
   t.assert(events[0].end instanceof Date);
+  t.assert(events[0]._status === "TENTATIVE");
+  t.assert(events[1]._status === "CONFIRMED");
 });
 
 test("traversing a correct XML tree", async t => {
@@ -563,7 +573,8 @@ test("transforming an event without alarms to a VEVENT", t => {
     start: new Date(),
     end: new Date(),
     summary: "abc",
-    uid: "uid"
+    uid: "uid",
+    _status: "CONFIRMED"
   };
   const vevent = SimpleCalDAV.toVEVENT(evt);
   t.assert(new RegExp("UID:uid").test(vevent));
@@ -571,6 +582,7 @@ test("transforming an event without alarms to a VEVENT", t => {
   t.assert(new RegExp("DTSTART:\\d{8}T\\d{6}Z").test(vevent));
   t.assert(new RegExp("DTEND:\\d{8}T\\d{6}Z").test(vevent));
   t.assert(new RegExp("DTSTAMP:\\d{8}T\\d{6}Z").test(vevent));
+  t.assert(new RegExp("STATUS:CONFIRMED").test(vevent));
 });
 
 test("transforming an email alarm into a VALARM", t => {
@@ -698,6 +710,7 @@ test("getting a single event", async t => {
 VERSION:2.0
 PRODID:-//TimDaub//simple-caldav//EN
 BEGIN:VEVENT
+STATUS:CONFIRMED
 UID:6720d455-76aa-4740-8766-c064df95bb3b
 DTSTART:20200729T180000Z
 DTEND:20200729T183000Z
@@ -727,6 +740,7 @@ END:VCALENDAR\`);
   t.assert("start" in evt);
   t.assert("end" in evt);
   t.assert("alarms" in evt);
+  t.assert("_status" in evt);
   t.assert(evt.alarms.length === 2);
   t.assert(evt.alarms[0].action === action);
   t.assert(evt.alarms[0].attendee === attendee);
@@ -798,4 +812,15 @@ test("if single deletion response is detected by parser", async t => {
   t.assert(collection.length == 1);
   t.assert(collection[0].href === "a");
   t.assert(collection[0].statusCode === 404);
+});
+
+test("submitting incorrect status when transforming to VEVENT", t => {
+  const evt = {
+    start: new Date(),
+    end: new Date(),
+    summary: "abc",
+    uid: "uid",
+    _status: "LOLNOTALLOWED"
+  };
+  t.throws(() => SimpleCalDAV.toVEVENT(evt), { instanceOf: ParserError });
 });
