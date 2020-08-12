@@ -62,6 +62,11 @@ class SimpleCalDAV {
     );
   }
 
+  static extractUid(href) {
+    const [_, uid] = href.match(new RegExp("([^\\/]+)\\.ics"));
+    return uid;
+  }
+
   static toVALARM(alarm) {
     let attendee;
     if (alarm && alarm.attendee && alarm.action.toUpperCase() === "EMAIL") {

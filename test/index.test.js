@@ -824,3 +824,10 @@ test("submitting incorrect status when transforming to VEVENT", t => {
   };
   t.throws(() => SimpleCalDAV.toVEVENT(evt), { instanceOf: ParserError });
 });
+
+test("extracting uid from href", t => {
+  const expected = "6720d455-76aa-4740-8766-c064df95bb3b";
+  const href = `/radicale/example%40gmail.com/8409b6d2-8dcc-997b-45d6-517801237d38/${expected}.ics`;
+  const uid = SimpleCalDAV.extractUid(href);
+  t.assert(uid === expected);
+});
