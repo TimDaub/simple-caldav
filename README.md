@@ -37,7 +37,11 @@ $ npm run test
 
 ## Changelog
 
-### 0.3.1
+### 0.3.3
+
+- Add static `SimpleCalDAV.extractUid(href)` method.
+
+### 0.3.2
 
 - Add `_status` property to event.
 
