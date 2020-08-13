@@ -112,7 +112,7 @@ class SimpleCalDAV {
       }
       if (evt._status) {
         if (allowedVEVENTStatus.includes(evt._status)) {
-          vevent += `STATUS:${evt._status}`;
+          vevent += `STATUS:${evt._status}\n`;
         } else {
           throw new ParserError(
             `Your status "${evt._status}" is not an allowed status for a VEVENT`

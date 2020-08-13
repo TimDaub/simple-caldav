@@ -552,7 +552,7 @@ test("creating an event", async t => {
 });
 
 test("updating an event completely", async t => {
-  const uid = "445ecbbc-acca-4ebb-b733-5c03477d048a";
+  const uid = "6720d455-76aa-4740-8766-c064df95bb3b";
   const worker = await createWorker(`
     app.put('/${uid}.ics', function (req, res) {
       res.status(201).send();
@@ -577,12 +577,12 @@ test("transforming an event without alarms to a VEVENT", t => {
     _status: "CONFIRMED"
   };
   const vevent = SimpleCalDAV.toVEVENT(evt);
-  t.assert(new RegExp("UID:uid").test(vevent));
-  t.assert(new RegExp("SUMMARY:abc").test(vevent));
-  t.assert(new RegExp("DTSTART:\\d{8}T\\d{6}Z").test(vevent));
-  t.assert(new RegExp("DTEND:\\d{8}T\\d{6}Z").test(vevent));
-  t.assert(new RegExp("DTSTAMP:\\d{8}T\\d{6}Z").test(vevent));
-  t.assert(new RegExp("STATUS:CONFIRMED").test(vevent));
+  t.assert(new RegExp("UID:uid\\n").test(vevent));
+  t.assert(new RegExp("SUMMARY:abc\\n").test(vevent));
+  t.assert(new RegExp("DTSTART:\\d{8}T\\d{6}Z\\n").test(vevent));
+  t.assert(new RegExp("DTEND:\\d{8}T\\d{6}Z\\n").test(vevent));
+  t.assert(new RegExp("DTSTAMP:\\d{8}T\\d{6}Z\\n").test(vevent));
+  t.assert(new RegExp("STATUS:CONFIRMED\\n").test(vevent));
 });
 
 test("transforming an email alarm into a VALARM", t => {
@@ -611,10 +611,10 @@ test("transforming an sms alarm into a VALARM", t => {
   };
 
   const valarm = SimpleCalDAV.toVALARM(alarm);
-  t.assert(new RegExp("ACTION:SMS").test(valarm));
-  t.assert(new RegExp(`DESCRIPTION:${alarm.description}`).test(valarm));
-  t.assert(new RegExp("TRIGGER:\\d{8}T\\d{6}Z").test(valarm));
-  t.assert(new RegExp(`ATTENDEE:sms:${alarm.attendee}`).test(valarm));
+  t.assert(new RegExp("ACTION:SMS\\n").test(valarm));
+  t.assert(new RegExp(`DESCRIPTION:${alarm.description}\\n`).test(valarm));
+  t.assert(new RegExp("TRIGGER:\\d{8}T\\d{6}Z\\n").test(valarm));
+  t.assert(new RegExp(`ATTENDEE:sms:${alarm.attendee}\\n`).test(valarm));
 });
 
 test("getting sync token", async t => {
