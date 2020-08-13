@@ -37,6 +37,11 @@ $ npm run test
 
 ## Changelog
 
+### 0.3.4
+
+- Bug fix: When adding a status to an event, in its ical representation status
+statement didn't add new `\n` new line instruction.
+
 ### 0.3.3
 
 - Add static `SimpleCalDAV.extractUid(href)` method.
