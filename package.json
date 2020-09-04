@@ -35,7 +35,7 @@
   "devDependencies": {
     "ava": "3.10.1",
     "browser-env": "3.3.0",
-    "expressively-mocked-fetch": "0.0.3"
+    "expressively-mocked-fetch": "0.1.1"
   },
   "ava": {
     "require": [

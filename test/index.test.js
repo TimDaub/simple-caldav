@@ -831,3 +831,49 @@ test("extracting uid from href", t => {
   const uid = SimpleCalDAV.extractUid(href);
   t.assert(uid === expected);
 });
+
+test("if two alarms cause a bug where a comma shows up in iCAL result", async t => {
+  const worker = await createWorker(`
+    app.put('/:resource', function (req, res) {
+      if (req.body.includes(",BEGIN:VALARM")) {
+        res.status(500).send();
+      } else {
+        res.status(201).send();
+      }
+    });
+  `);
+  const URI = `http://localhost:${worker.port}`;
+
+  const start = moment().format();
+  const end = moment()
+    .add(1, "hour")
+    .format();
+  const alarms = [
+    {
+      action: "email",
+      summary: "Email's subject",
+      description: "email's description",
+      trigger: new Date(),
+      attendee: "email@example.com"
+    },
+    {
+      action: "email",
+      summary: "Email's subject",
+      description: "email's description",
+      trigger: moment()
+        .add(1, "hour")
+        .toDate(),
+      attendee: "email@example.com"
+    }
+  ];
+
+  const dav = new SimpleCalDAV(URI);
+  const res = await dav.createEvent(
+    start,
+    end,
+    "test summary",
+    alarms,
+    "CONFIRMED"
+  );
+  t.assert(res.status === 201);
+});

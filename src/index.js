@@ -136,7 +136,7 @@ class SimpleCalDAV {
       uid = uuidv4();
     }
     if (alarms) {
-      alarms = alarms.map(SimpleCalDAV.toVALARM);
+      alarms = alarms.map(SimpleCalDAV.toVALARM).join("");
     }
 
     const body = SimpleCalDAV.toVEVENT(
