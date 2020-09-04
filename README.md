@@ -37,6 +37,11 @@ $ npm run test
 
 ## Changelog
 
+### 0.3.5
+
+- Bug fix: When adding multiple alarms, `,BEGIN:VALARM` would show up in VEVENT
+text
+
 ### 0.3.4
 
 - Bug fix: When adding a status to an event, in its ical representation status
