@@ -749,6 +749,24 @@ END:VCALENDAR\`);
   t.assert(evt.alarms[1].subject === subject);
 });
 
+test("getting a single event, but server returns html which is valid xml but not valid response", async t => {
+  const action = "EMAIL";
+  const attendee = "attendee";
+  const description = "description";
+  const time = "20200729T130856Z";
+  const subject = "bla";
+  const worker = await createWorker(`
+    app.get('/:uid', function (req, res) {
+      res.status(200).send("<!doctype html><html></html>");
+    });
+  `);
+  const URI = `http://example.com/event.ics`;
+  const dav = new SimpleCalDAV(URI);
+  await t.throwsAsync(async () => {
+    await dav.getEvent("abc");
+  });
+});
+
 test("if syncCollection returns collection with correctly ordered properties", async t => {
   const href = "1";
   const href2 = "2";

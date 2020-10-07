@@ -219,6 +219,7 @@ class SimpleCalDAV {
         return;
       } else {
         console.warn(err);
+        throw err;
       }
     }
 
