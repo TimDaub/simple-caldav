@@ -25,8 +25,9 @@
   "homepage": "https://github.com/TimDaub/simple-caldav#readme",
   "dependencies": {
     "cross-fetch": "3.0.5",
+    "date-fns": "2.16.1",
+    "date-fns-tz": "1.0.12",
     "ical.js": "github:TimDaub/ical.js#feat/detect-module-mode-build",
-    "moment": "2.27.0",
     "sha1": "1.1.1",
     "uuid": "8.2.0",
     "xmldom": "0.3.0",

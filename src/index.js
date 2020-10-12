@@ -1,17 +1,16 @@
 // @format
 const ical = require("ical.js");
 const fetch = require("cross-fetch");
-const xpath = require("xpath");
+const { select } = require("xpath");
 const dom = require("xmldom").DOMParser;
 const { v4: uuidv4 } = require("uuid");
-const moment = require("moment");
+const { format } = require("date-fns-tz");
 // NOTE: We decided on using sha1 for generating etags, as there's no mutual
 // crypto API for simple-caldav's targets, which are nodejs and browser
 // environments.
 const sha1 = require("sha1");
 
 const prodid = "-//TimDaub//simple-caldav//EN";
-const dateTimeFormat = "YMMDDTHHmmss[Z]";
 // NOTE: https://tools.ietf.org/html/rfc5545#section-3.8.1.11
 const allowedVEVENTStatus = ["TENTATIVE", "CONFIRMED", "CANCELED"];
 
@@ -278,7 +277,7 @@ class SimpleCalDAV {
         instruction[key] = [];
       }
 
-      const nodes = xpath.select(path, doc);
+      const nodes = select(path, doc);
       if (typeof nodes === "boolean" || typeof nodes === "number") {
         instruction[key] = nodes;
       }
@@ -311,8 +310,9 @@ class SimpleCalDAV {
   static formatDateTime(dateTime) {
     // NOTE: See https://tools.ietf.org/html/rfc5545 under:
     // "FORM #2: DATE WITH UTC TIME"
-    const date = moment(dateTime);
-    return date.utc().format(dateTimeFormat);
+    return format(dateTime, "yyyyMMdd'T'HHmmss'Z'", {
+      timeZone: "UTC"
+    });
   }
 
   async getSyncToken() {

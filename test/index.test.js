@@ -2,7 +2,7 @@
 const test = require("ava");
 const createWorker = require("expressively-mocked-fetch");
 const dom = require("xmldom").DOMParser;
-const moment = require("moment");
+const add = require("date-fns/add");
 
 const {
   SimpleCalDAV,
@@ -526,12 +526,13 @@ test("synching etag", async t => {
 test("formatting a date to iCal compliant date time", t => {
   // NOTE: For reference, see https://tools.ietf.org/html/rfc5545 under:
   // "FORM #2: DATE WITH UTC TIME"
-  const formatted = SimpleCalDAV.formatDateTime(new Date());
+  const expected = new Date("2018-09-01T16:01:36.386Z");
+  const formatted = SimpleCalDAV.formatDateTime(expected);
   const format = new RegExp(
     "[0-9]{4}[0-1][0-9][0-3][0-9]T[0-2][0-9][0-6][0-9]\\d{2}Z"
   );
-  // Tested with: 19980119T070000Z
   t.assert(format.test(formatted));
+  t.assert(formatted === "20180901T180136Z");
 });
 
 test("creating an event", async t => {
@@ -543,10 +544,8 @@ test("creating an event", async t => {
   const URI = `http://localhost:${worker.port}`;
 
   const dav = new SimpleCalDAV(URI);
-  const start = moment().format();
-  const end = moment()
-    .add(1, "hour")
-    .format();
+  const start = new Date();
+  const end = add(new Date(), { hours: 1 });
   const res = await dav.createEvent(start, end, "test summary");
   t.assert(res.status === 201);
 });
@@ -560,10 +559,8 @@ test("updating an event completely", async t => {
   `);
   const URI = `http://localhost:${worker.port}`;
   const dav = new SimpleCalDAV(URI);
-  const start = moment().format();
-  const end = moment()
-    .add(1, "hour")
-    .format();
+  const start = new Date();
+  const end = add(new Date(), { hours: 1 });
   const res = await dav.updateEvent(uid, start, end, "updated summary");
   t.assert(res.status === 201);
 });
@@ -760,11 +757,16 @@ test("getting a single event, but server returns html which is valid xml but not
       res.status(200).send("<!doctype html><html></html>");
     });
   `);
-  const URI = `http://example.com/event.ics`;
+  //const URI = `http://example.com/event.ics`;
+  const URI =
+    "https://cloud1.daubenschuetz.de /radicale/example%40gmail.com/8409b6d2-8dcc-997b-45d6-517801237d38/";
   const dav = new SimpleCalDAV(URI);
-  await t.throwsAsync(async () => {
-    await dav.getEvent("abc");
-  });
+  await t.throwsAsync(
+    async () => {
+      await dav.getEvent("event");
+    },
+    { instanceOf: ParserError }
+  );
 });
 
 test("if syncCollection returns collection with correctly ordered properties", async t => {
@@ -862,10 +864,8 @@ test("if two alarms cause a bug where a comma shows up in iCAL result", async t 
   `);
   const URI = `http://localhost:${worker.port}`;
 
-  const start = moment().format();
-  const end = moment()
-    .add(1, "hour")
-    .format();
+  const start = new Date();
+  const end = add(new Date(), { hours: 1 });
   const alarms = [
     {
       action: "email",
@@ -878,9 +878,7 @@ test("if two alarms cause a bug where a comma shows up in iCAL result", async t 
       action: "email",
       summary: "Email's subject",
       description: "email's description",
-      trigger: moment()
-        .add(1, "hour")
-        .toDate(),
+      trigger: add(new Date(), { hours: 1 }),
       attendee: "email@example.com"
     }
   ];
