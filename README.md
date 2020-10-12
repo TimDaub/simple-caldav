@@ -37,6 +37,11 @@ $ npm run test
 
 ## Changelog
 
+### 0.4.0
+
+- Switched out moment.js with `date-fns`. Breaking change is that
+  `formatDateTime` now only accepts `Date` objects, or throws otherwise.
+
 ### 0.3.5
 
 - Bug fix: When adding multiple alarms, `,BEGIN:VALARM` would show up in VEVENT
