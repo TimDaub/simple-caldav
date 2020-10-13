@@ -3,6 +3,7 @@ const test = require("ava");
 const createWorker = require("expressively-mocked-fetch");
 const dom = require("xmldom").DOMParser;
 const add = require("date-fns/add");
+const moment = require("moment");
 
 const {
   SimpleCalDAV,
@@ -526,13 +527,18 @@ test("synching etag", async t => {
 test("formatting a date to iCal compliant date time", t => {
   // NOTE: For reference, see https://tools.ietf.org/html/rfc5545 under:
   // "FORM #2: DATE WITH UTC TIME"
-  const expected = new Date("2018-09-01T16:01:36.386Z");
+  const expected = new Date();
   const formatted = SimpleCalDAV.formatDateTime(expected);
   const format = new RegExp(
     "[0-9]{4}[0-1][0-9][0-3][0-9]T[0-2][0-9][0-6][0-9]\\d{2}Z"
   );
   t.assert(format.test(formatted));
-  t.assert(formatted === "20180901T180136Z");
+  // NOTE: We import moment here as a dev dependency as it was originally used
+  // by simple-caldav to create the iCAL UTC time stamp
+  const converted = moment(expected)
+    .utc()
+    .format("YMMDDTHHmmss[Z]");
+  t.assert(converted === formatted);
 });
 
 test("creating an event", async t => {

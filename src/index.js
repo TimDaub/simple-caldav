@@ -4,7 +4,7 @@ const fetch = require("cross-fetch");
 const { select } = require("xpath");
 const dom = require("xmldom").DOMParser;
 const { v4: uuidv4 } = require("uuid");
-const { format } = require("date-fns-tz");
+const { format, utcToZonedTime } = require("date-fns-tz");
 // NOTE: We decided on using sha1 for generating etags, as there's no mutual
 // crypto API for simple-caldav's targets, which are nodejs and browser
 // environments.
@@ -310,8 +310,11 @@ class SimpleCalDAV {
   static formatDateTime(dateTime) {
     // NOTE: See https://tools.ietf.org/html/rfc5545 under:
     // "FORM #2: DATE WITH UTC TIME"
-    return format(dateTime, "yyyyMMdd'T'HHmmss'Z'", {
-      timeZone: "UTC"
+    // For explaination of the time zone shift below, visit:
+    // https://stackoverflow.com/a/63227335/1263876
+    const timeZone = "UTC";
+    return format(utcToZonedTime(dateTime, timeZone), "yyyyMMdd'T'HHmmss'Z'", {
+      timeZone
     });
   }
 
