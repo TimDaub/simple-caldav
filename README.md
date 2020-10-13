@@ -37,6 +37,10 @@ $ npm run test
 
 ## Changelog
 
+### 0.4.1
+
+- Fix UTC time zone shift calculation in `formatDateTime`
+
 ### 0.4.0
 
 - Switched out moment.js with `date-fns`. Breaking change is that
