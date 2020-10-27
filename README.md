@@ -37,6 +37,11 @@ $ npm run test
 
 ## Changelog
 
+### 0.4.2
+
+- Add `LOCATION` property to VEVENT
+- Add `ORGANIZER;CN=:mailto` property to VEVENT
+
 ### 0.4.1
 
 - Fix UTC time zone shift calculation in `formatDateTime`
