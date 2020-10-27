@@ -43,19 +43,28 @@ class SimpleCalDAV {
     this.uri = uri;
   }
 
-  async createEvent(start, end, summary, alarms, _status) {
-    return this.handleEvent(start, end, summary, alarms, _status, "create");
-  }
-
-  // TODO: Do we want to make this method more convenient by allowing partial
-  // updates?
-  async updateEvent(uid, start, end, summary, alarms, _status) {
+  async createEvent(start, end, summary, alarms, _status, organizer) {
     return this.handleEvent(
       start,
       end,
       summary,
       alarms,
       _status,
+      organizer,
+      "create"
+    );
+  }
+
+  // TODO: Do we want to make this method more convenient by allowing partial
+  // updates?
+  async updateEvent(uid, start, end, summary, alarms, _status, organizer) {
+    return this.handleEvent(
+      start,
+      end,
+      summary,
+      alarms,
+      _status,
+      organizer,
       "update",
       uid
     );
@@ -118,6 +127,15 @@ class SimpleCalDAV {
           );
         }
       }
+      if (evt.organizer && evt.organizer.email) {
+        if (evt.organizer.commonName) {
+          vevent += `ORGANIZER;CN=${evt.organizer.commonName}:mailto:${
+            evt.organizer.email
+          }\n`;
+        } else {
+          vevent += `ORGANIZER:mailto:${evt.organizer.email}\n`;
+        }
+      }
       vevent += "END:VEVENT\n";
       vevent += "END:VCALENDAR";
       return vevent;
@@ -126,7 +144,16 @@ class SimpleCalDAV {
     }
   }
 
-  async handleEvent(start, end, summary, alarms, _status, method, uid = "") {
+  async handleEvent(
+    start,
+    end,
+    summary,
+    alarms,
+    _status,
+    organizer,
+    method,
+    uid = ""
+  ) {
     if (!uid) {
       // NOTE: It's recommended to add a `@host.com` postfix to the uid. Since,
       // however, this lib will be used by a multitude of clients and since other
@@ -139,7 +166,7 @@ class SimpleCalDAV {
     }
 
     const body = SimpleCalDAV.toVEVENT(
-      { start, end, summary, uid, _status },
+      { start, end, summary, uid, _status, organizer },
       alarms
     );
 
@@ -266,6 +293,21 @@ class SimpleCalDAV {
     finalEvent.summary = pevent.summary;
     finalEvent.start = pevent.startDate.toJSDate();
     finalEvent.end = pevent.endDate.toJSDate();
+
+    const orgProp = evt.getFirstProperty("organizer");
+    let email, commonName;
+    if (orgProp) {
+      const orgMail = orgProp.getFirstValue("organizer");
+      email = orgMail.match(new RegExp("mailto:(.*)", "i"))[1];
+      commonName = orgProp.getParameter("cn");
+    }
+
+    if (email) {
+      finalEvent.organizer = { email };
+    }
+    if (email && commonName) {
+      finalEvent.organizer = { email, commonName };
+    }
     // NOTE: https://github.com/mozilla-comm/ical.js/issues/452
     finalEvent._status = pevent._firstProp("status");
     return finalEvent;
