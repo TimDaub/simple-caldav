@@ -43,7 +43,7 @@ class SimpleCalDAV {
     this.uri = uri;
   }
 
-  async createEvent(start, end, summary, alarms, _status, organizer) {
+  async createEvent(start, end, summary, alarms, _status, organizer, _location) {
     return this.handleEvent(
       start,
       end,
@@ -51,13 +51,14 @@ class SimpleCalDAV {
       alarms,
       _status,
       organizer,
+      _location,
       "create"
     );
   }
 
   // TODO: Do we want to make this method more convenient by allowing partial
   // updates?
-  async updateEvent(uid, start, end, summary, alarms, _status, organizer) {
+  async updateEvent(uid, start, end, summary, alarms, _status, organizer, _location) {
     return this.handleEvent(
       start,
       end,
@@ -65,6 +66,7 @@ class SimpleCalDAV {
       alarms,
       _status,
       organizer,
+      _location,
       "update",
       uid
     );
@@ -136,6 +138,9 @@ class SimpleCalDAV {
           vevent += `ORGANIZER:mailto:${evt.organizer.email}\n`;
         }
       }
+      if (evt._location) {
+        vevent += `LOCATION:${evt._location}\n`;
+      }
       vevent += "END:VEVENT\n";
       vevent += "END:VCALENDAR";
       return vevent;
@@ -151,6 +156,7 @@ class SimpleCalDAV {
     alarms,
     _status,
     organizer,
+    _location,
     method,
     uid = ""
   ) {
@@ -166,7 +172,7 @@ class SimpleCalDAV {
     }
 
     const body = SimpleCalDAV.toVEVENT(
-      { start, end, summary, uid, _status, organizer },
+      { start, end, summary, uid, _status, organizer, _location },
       alarms
     );
 
@@ -291,6 +297,7 @@ class SimpleCalDAV {
 
     const pevent = new ICAL.Event(evt);
     finalEvent.summary = pevent.summary;
+    finalEvent.location = pevent._firstProp("location");
     finalEvent.start = pevent.startDate.toJSDate();
     finalEvent.end = pevent.endDate.toJSDate();
 

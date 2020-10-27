@@ -86,6 +86,7 @@ test("fetching calendar single event without an alarm", async t => {
   const description = "description";
   const time = "20200729T130856Z";
   const subject = "bla";
+  const _location = "Friedrichstrasse 3, 46145 Oberhausen Stadtmitte"
   const organizer = {
     commonName: "John Smith",
     email: "john@smith.de"
@@ -130,6 +131,7 @@ LAST-MODIFIED:20200717T143454Z
 STATUS:TENTATIVE
 ORGANIZER;CN=${organizer.commonName}:mailto:${organizer.email}
 SUMMARY:${summary}
+LOCATION:${_location}
 TRANSP:OPAQUE
 X-MOZ-GENERATION:1
 END:VEVENT
@@ -152,10 +154,11 @@ END:VCALENDAR</C:calendar-data>
   t.assert(events[0].end instanceof Date);
   t.assert(events[0].alarms.length === 0);
   t.assert(events[0]._status === "TENTATIVE");
+  t.assert(events[0].location === _location);
   t.deepEqual(events[0].organizer, organizer);
 });
 
-test("fetching calendar single event without an alarm and without a status", async t => {
+test("fetching calendar single event without an alarm and without a status and a location", async t => {
   const summary = "Work on this lib";
   const action = "EMAIL";
   const attendee = "attendee";
@@ -307,6 +310,7 @@ test("fetching calendar single event", async t => {
   const description = "description";
   const time = "20200729T130856Z";
   const subject = "bla";
+  const _location = "Friedrichstrasse 3, 46145 Oberhausen Stadtmitte"
   const organizer = {
     commonName: "John Smith",
     email: "john@smith.com"
@@ -352,6 +356,7 @@ SUMMARY:${summary}
 TRANSP:OPAQUE
 X-MOZ-GENERATION:1
 STATUS:CONFIRMED
+LOCATION:${_location}
 ORGANIZER;CN=${organizer.commonName}:mailto:${organizer.email}
 BEGIN:VALARM
 ACTION:${action}
@@ -386,6 +391,7 @@ END:VCALENDAR</C:calendar-data>
   t.assert(events[0].end instanceof Date);
   t.assert(events[0]._status === "CONFIRMED");
   t.deepEqual(events[0].organizer, organizer);
+  t.assert(events[0].location = _location);
   t.assert(events[0].alarms.length === 2);
   t.assert(events[0].alarms[0].action === action);
   t.assert(events[0].alarms[0].attendee === attendee);
@@ -561,7 +567,6 @@ test.skip("traversing a correct XML tree where values are missing", async t => {
     key2: "//*[local-name(.)='key2']/text()"
   };
   const content = SimpleCalDAV.traverseXML(doc, instruction);
-  console.log(content);
   t.assert(content.key1[0] === null);
   t.assert(content.key1[1] === "value1");
   t.assert(content.key2[0] === "value1");
@@ -660,6 +665,7 @@ test("transforming an event without alarms to a VEVENT", t => {
     summary: "abc",
     uid: "uid",
     _status: "CONFIRMED",
+    _location: "Friedrichstrasse 3, 46145 Oberhausen Stadtmitte",
     organizer: {
       commonName: "John Smith",
       email: "john@smith.com"
@@ -672,6 +678,7 @@ test("transforming an event without alarms to a VEVENT", t => {
   t.assert(new RegExp("DTEND:\\d{8}T\\d{6}Z\\n").test(vevent));
   t.assert(new RegExp("DTSTAMP:\\d{8}T\\d{6}Z\\n").test(vevent));
   t.assert(new RegExp("STATUS:CONFIRMED\\n").test(vevent));
+  t.assert(new RegExp(`LOCATION:${evt._location}\\n`).test(vevent));
   t.assert(
     new RegExp(
       `ORGANIZER;CN=${evt.organizer.commonName}:mailto:${
@@ -817,6 +824,7 @@ test("getting a single event", async t => {
   const description = "description";
   const time = "20200729T130856Z";
   const subject = "bla";
+  const _location = "Friedrichstrasse 3, 46145 Oberhausen Stadtmitte"
   const organizer = {
     email: "john@smith.com",
     commonName: "John Smith"
@@ -833,6 +841,7 @@ DTSTART:20200729T180000Z
 DTEND:20200729T183000Z
 DTSTAMP:20200729T130856Z
 SUMMARY:new one
+LOCATION:${_location}
 ORGANIZER;CN=${organizer.commonName}:mailto:${organizer.email}
 BEGIN:VALARM
 ACTION:${action}
@@ -860,6 +869,8 @@ END:VCALENDAR\`);
   t.assert("alarms" in evt);
   t.assert("_status" in evt);
   t.assert("organizer" in evt);
+  t.assert("location" in evt);
+  t.assert(evt.location === _location);
   t.deepEqual(evt.organizer, organizer);
   t.assert(evt.alarms.length === 2);
   t.assert(evt.alarms[0].action === action);
