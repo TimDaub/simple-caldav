@@ -312,13 +312,24 @@ class SimpleCalDAV {
           }
         }
 
-        return {
-          action: alarm.getFirstPropertyValue("action"),
-          attendee: alarm.getFirstPropertyValue("attendee"),
-          description: alarm.getFirstPropertyValue("description"),
+        const action = alarm.getFirstPropertyValue("action");
+        const attendee = alarm.getFirstPropertyValue("attendee");
+        let res = {
+          action,
           trigger,
+          description: alarm.getFirstPropertyValue("description"),
           subject: alarm.getFirstPropertyValue("subject")
         };
+
+        if (action === "EMAIL") {
+          const [_, email] = attendee.match(new RegExp(".*mailto:(.+)$", "i"));
+          res.attendee = email;
+        } else if (action === "SMS") {
+          const [_, phone] = attendee.match(new RegExp(".*sms:(.+)$", "i"));
+          res.attendee = phone;
+        }
+
+        return res;
       })
       .filter(alarm => !!alarm);
     finalEvent.alarms = valarms;

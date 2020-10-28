@@ -646,6 +646,40 @@ test("creating an event", async t => {
   t.assert(res.status === 201);
 });
 
+test("creating an event with alarm", async t => {
+  const worker = await createWorker(`
+    app.put('/:resource', function (req, res) {
+      if (req.body.includes(":mailto:mailto:")) {
+        return res.status(500).send();
+      }
+      res.status(201).send();
+    });
+  `);
+  const URI = `http://localhost:${worker.port}`;
+
+  const dav = new SimpleCalDAV(URI);
+  const start = new Date();
+  const end = add(new Date(), { hours: 1 });
+  const alarms = [
+    {
+      action: "email",
+      summary: "Email's subject",
+      description: "email's description",
+      trigger: new Date(),
+      attendee: "email@example.com"
+    },
+    {
+      action: "email",
+      summary: "Email's subject",
+      description: "email's description",
+      trigger: add(new Date(), { hours: 1 }),
+      attendee: "email@example.com"
+    }
+  ];
+  const res = await dav.createEvent(start, end, "test summary", alarms);
+  t.assert(res.status === 201);
+});
+
 test("updating an event completely", async t => {
   const uid = "6720d455-76aa-4740-8766-c064df95bb3b";
   const worker = await createWorker(`
@@ -1139,6 +1173,107 @@ test("if two alarms cause a bug where a comma shows up in iCAL result", async t 
     end,
     "test summary",
     alarms,
+    "CONFIRMED"
+  );
+  t.assert(res.status === 201);
+});
+
+test("updating an event to check whether mailto: and sms: multiply", async t => {
+  const action = "EMAIL";
+  const attendee = "attendee";
+  const description = "description";
+  const time = "20200729T130856Z";
+  const subject = "bla";
+  const _location = "Friedrichstrasse 3, 46145 Oberhausen Stadtmitte";
+  const uid = "abc";
+  const phone = "+491795345170";
+  const organizer = {
+    email: "john@smith.com",
+    commonName: "John Smith"
+  };
+  // NOTE:
+  const worker = await createWorker(
+    `
+    app.get('/:uid', function (req, res) {
+      res.status(201).send(\`BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//TimDaub//simple-caldav//EN
+BEGIN:VEVENT
+STATUS:CONFIRMED
+UID:${uid}
+DTSTART:20200729T180000Z
+DTEND:20200729T183000Z
+DTSTAMP:20200729T130856Z
+SUMMARY:new one
+LOCATION:${_location}
+ORGANIZER;CN=${organizer.commonName}:mailto:${organizer.email}
+BEGIN:VALARM
+ACTION:${action}
+ATTENDEE:mailto:${attendee}
+DESCRIPTION:${description}
+TRIGGER;VALUE=DATE-TIME:${time}
+END:VALARM
+BEGIN:VALARM
+ACTION:${action}
+ATTENDEE:mailto:mailto:${attendee}
+DESCRIPTION:${description}
+TRIGGER;VALUE=DATE-TIME:${time}
+END:VALARM
+BEGIN:VALARM
+ACTION:SMS
+ATTENDEE:sms:sms:${phone}
+DESCRIPTION:Irgendein alarm
+SUBJECT:${subject}
+TRIGGER;VALUE=DATE-TIME:20201003T123000Z
+END:VALARM
+BEGIN:VALARM
+ACTION:SMS
+ATTENDEE:sms:${phone}
+DESCRIPTION:Irgendein alarm
+SUBJECT:${subject}
+TRIGGER;VALUE=DATE-TIME:20201003T123000Z
+END:VALARM
+END:VEVENT
+END:VCALENDAR\`);
+    });
+
+    app.put('/${uid}.ics', function (req, res) {
+      if (req.body.includes(":mailto:mailto:") || req.body.includes(":sms:sms:")) {
+        return res.status(500).send();
+      }
+
+      res.status(201).send();
+    });
+  `,
+    2
+  );
+  const URI = `http://localhost:${worker.port}`;
+  const dav = new SimpleCalDAV(URI);
+  const evt = await dav.getEvent(uid);
+  t.assert("summary" in evt);
+  t.assert("start" in evt);
+  t.assert("end" in evt);
+  t.assert("alarms" in evt);
+  t.assert("_status" in evt);
+  t.assert("organizer" in evt);
+  t.assert("location" in evt);
+  t.assert(evt.location === _location);
+  t.deepEqual(evt.organizer, organizer);
+  t.assert(evt.href === `${URI}/${uid}.ics`);
+  t.assert(evt.alarms.length === 4);
+  t.assert(evt.alarms[0].action === action);
+  t.assert(evt.alarms[0].attendee === attendee);
+  t.assert(evt.alarms[0].trigger instanceof Date);
+  t.assert(evt.alarms[1].attendee === attendee);
+  t.assert(evt.alarms[2].subject === subject);
+  t.assert(evt.alarms[3].attendee === phone);
+
+  const res = await dav.updateEvent(
+    uid,
+    evt.start,
+    evt.end,
+    "updated summary",
+    evt.alarms,
     "CONFIRMED"
   );
   t.assert(res.status === 201);
