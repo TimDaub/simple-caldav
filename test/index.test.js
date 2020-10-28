@@ -86,7 +86,9 @@ test("fetching calendar single event without an alarm", async t => {
   const description = "description";
   const time = "20200729T130856Z";
   const subject = "bla";
-  const _location = "Friedrichstrasse 3, 46145 Oberhausen Stadtmitte"
+  const _location = "Friedrichstrasse 3, 46145 Oberhausen Stadtmitte";
+  const href =
+    "/radicale/example%40gmail.com/8409b6d2-8dcc-997b-45d6-517801237d38/50113370-f61f-4444-9e94-e3ba1d2467b8.ics";
   const organizer = {
     commonName: "John Smith",
     email: "john@smith.de"
@@ -97,7 +99,7 @@ test("fetching calendar single event without an alarm", async t => {
 <?xml version="1.0" encoding="UTF-8"?>
 <multistatus xmlns="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
    <response>
-      <href>/radicale/example%40gmail.com/8409b6d2-8dcc-997b-45d6-517801237d38/50113370-f61f-4444-9e94-e3ba1d2467b8.ics</href>
+      <href>${href}</href>
       <propstat>
          <prop>
             <getetag>"aa98130e9fac911f70a73dac8b57e58a482b04ec4b8a5417dfedf8f42069c6d0"</getetag>
@@ -155,6 +157,7 @@ END:VCALENDAR</C:calendar-data>
   t.assert(events[0].alarms.length === 0);
   t.assert(events[0]._status === "TENTATIVE");
   t.assert(events[0].location === _location);
+  t.assert(events[0].href === URI + href);
   t.deepEqual(events[0].organizer, organizer);
 });
 
@@ -310,7 +313,7 @@ test("fetching calendar single event", async t => {
   const description = "description";
   const time = "20200729T130856Z";
   const subject = "bla";
-  const _location = "Friedrichstrasse 3, 46145 Oberhausen Stadtmitte"
+  const _location = "Friedrichstrasse 3, 46145 Oberhausen Stadtmitte";
   const organizer = {
     commonName: "John Smith",
     email: "john@smith.com"
@@ -391,7 +394,7 @@ END:VCALENDAR</C:calendar-data>
   t.assert(events[0].end instanceof Date);
   t.assert(events[0]._status === "CONFIRMED");
   t.deepEqual(events[0].organizer, organizer);
-  t.assert(events[0].location = _location);
+  t.assert((events[0].location = _location));
   t.assert(events[0].alarms.length === 2);
   t.assert(events[0].alarms[0].action === action);
   t.assert(events[0].alarms[0].attendee === attendee);
@@ -824,7 +827,8 @@ test("getting a single event", async t => {
   const description = "description";
   const time = "20200729T130856Z";
   const subject = "bla";
-  const _location = "Friedrichstrasse 3, 46145 Oberhausen Stadtmitte"
+  const _location = "Friedrichstrasse 3, 46145 Oberhausen Stadtmitte";
+  const uid = "abc";
   const organizer = {
     email: "john@smith.com",
     commonName: "John Smith"
@@ -836,7 +840,7 @@ VERSION:2.0
 PRODID:-//TimDaub//simple-caldav//EN
 BEGIN:VEVENT
 STATUS:CONFIRMED
-UID:6720d455-76aa-4740-8766-c064df95bb3b
+UID:${uid}
 DTSTART:20200729T180000Z
 DTEND:20200729T183000Z
 DTSTAMP:20200729T130856Z
@@ -862,7 +866,7 @@ END:VCALENDAR\`);
   `);
   const URI = `http://localhost:${worker.port}`;
   const dav = new SimpleCalDAV(URI);
-  const evt = await dav.getEvent("abc");
+  const evt = await dav.getEvent(uid);
   t.assert("summary" in evt);
   t.assert("start" in evt);
   t.assert("end" in evt);
@@ -872,6 +876,7 @@ END:VCALENDAR\`);
   t.assert("location" in evt);
   t.assert(evt.location === _location);
   t.deepEqual(evt.organizer, organizer);
+  t.assert(evt.href === `${URI}/${uid}.ics`);
   t.assert(evt.alarms.length === 2);
   t.assert(evt.alarms[0].action === action);
   t.assert(evt.alarms[0].attendee === attendee);
@@ -886,6 +891,7 @@ test("getting a single event but without any organizer present", async t => {
   const description = "description";
   const time = "20200729T130856Z";
   const subject = "bla";
+  const uid = "6720d455-76aa-4740-8766-c064df95bb3b";
   const worker = await createWorker(`
     app.get('/:uid', function (req, res) {
       res.status(201).send(\`BEGIN:VCALENDAR
@@ -893,7 +899,7 @@ VERSION:2.0
 PRODID:-//TimDaub//simple-caldav//EN
 BEGIN:VEVENT
 STATUS:CONFIRMED
-UID:6720d455-76aa-4740-8766-c064df95bb3b
+UID:${uid}
 DTSTART:20200729T180000Z
 DTEND:20200729T183000Z
 DTSTAMP:20200729T130856Z
@@ -917,13 +923,14 @@ END:VCALENDAR\`);
   `);
   const URI = `http://localhost:${worker.port}`;
   const dav = new SimpleCalDAV(URI);
-  const evt = await dav.getEvent("abc");
+  const evt = await dav.getEvent(uid);
   t.assert("summary" in evt);
   t.assert("start" in evt);
   t.assert("end" in evt);
   t.assert("alarms" in evt);
   t.assert("_status" in evt);
   t.assert(!("organizer" in evt));
+  t.assert(evt.href === `${URI}/${uid}.ics`);
   t.assert(evt.alarms.length === 2);
   t.assert(evt.alarms[0].action === action);
   t.assert(evt.alarms[0].attendee === attendee);
@@ -939,6 +946,7 @@ test("getting a single event but only with organizer email present", async t => 
   const time = "20200729T130856Z";
   const subject = "bla";
   const organizer = { email: "john@smith.com" };
+  const uid = "6720d455-76aa-4740-8766-c064df95bb3b";
   const worker = await createWorker(`
     app.get('/:uid', function (req, res) {
       res.status(201).send(\`BEGIN:VCALENDAR
@@ -946,7 +954,7 @@ VERSION:2.0
 PRODID:-//TimDaub//simple-caldav//EN
 BEGIN:VEVENT
 STATUS:CONFIRMED
-UID:6720d455-76aa-4740-8766-c064df95bb3b
+UID:${uid}
 DTSTART:20200729T180000Z
 DTEND:20200729T183000Z
 DTSTAMP:20200729T130856Z
@@ -971,13 +979,14 @@ END:VCALENDAR\`);
   `);
   const URI = `http://localhost:${worker.port}`;
   const dav = new SimpleCalDAV(URI);
-  const evt = await dav.getEvent("abc");
+  const evt = await dav.getEvent(uid);
   t.assert("summary" in evt);
   t.assert("start" in evt);
   t.assert("end" in evt);
   t.assert("alarms" in evt);
   t.assert("_status" in evt);
   t.assert("organizer" in evt);
+  t.assert(evt.href === `${URI}/${uid}.ics`);
   t.deepEqual(evt.organizer, organizer);
   t.assert(evt.alarms.length === 2);
   t.assert(evt.alarms[0].action === action);

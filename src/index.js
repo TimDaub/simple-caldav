@@ -43,7 +43,15 @@ class SimpleCalDAV {
     this.uri = uri;
   }
 
-  async createEvent(start, end, summary, alarms, _status, organizer, _location) {
+  async createEvent(
+    start,
+    end,
+    summary,
+    alarms,
+    _status,
+    organizer,
+    _location
+  ) {
     return this.handleEvent(
       start,
       end,
@@ -58,7 +66,16 @@ class SimpleCalDAV {
 
   // TODO: Do we want to make this method more convenient by allowing partial
   // updates?
-  async updateEvent(uid, start, end, summary, alarms, _status, organizer, _location) {
+  async updateEvent(
+    uid,
+    start,
+    end,
+    summary,
+    alarms,
+    _status,
+    organizer,
+    _location
+  ) {
     return this.handleEvent(
       start,
       end,
@@ -197,7 +214,8 @@ class SimpleCalDAV {
   }
 
   async getEvent(uid, transform = SimpleCalDAV.simplifyEvent) {
-    const res = await fetch(`${this.uri}/${uid}.ics`, {
+    const href = `${this.uri}/${uid}.ics`;
+    const res = await fetch(href, {
       method: "GET",
       headers: {
         "Content-Type": "application/xml; charset=utf-8"
@@ -205,7 +223,7 @@ class SimpleCalDAV {
     });
     let evt = await res.text();
     evt = SimpleCalDAV.parseICS(evt);
-    return transform(evt);
+    return transform(evt, href);
   }
 
   async listEvents(transform = SimpleCalDAV.simplifyEvent) {
@@ -230,14 +248,24 @@ class SimpleCalDAV {
     const text = await res.text();
     const doc = new dom().parseFromString(text);
     const instruction = {
-      events: "//*[local-name()='calendar-data']/text()"
+      events: "//*[local-name()='calendar-data']/text()",
+      hrefs: "//*[local-name()='href']/text()"
     };
 
-    let { events } = SimpleCalDAV.traverseXML(doc, instruction);
+    let { events, hrefs } = SimpleCalDAV.traverseXML(doc, instruction);
     if (events.length === 0) {
       return [];
     } else {
-      return events.map(SimpleCalDAV.parseICS).map(transform);
+      for (let i = 0; i < events.length; i++) {
+        let evt = events[i];
+        const href = this.uri + hrefs[i];
+
+        evt = SimpleCalDAV.parseICS(evt);
+        evt = transform(evt, href);
+        events[i] = evt;
+      }
+
+      return events;
     }
   }
 
@@ -264,9 +292,9 @@ class SimpleCalDAV {
     return sha1(s);
   }
 
-  static simplifyEvent(evt) {
+  static simplifyEvent(evt, href) {
     let palarms = [];
-    let finalEvent = {};
+    let finalEvent = { href };
 
     let valarms = evt.getAllSubcomponents("valarm");
     valarms = valarms
