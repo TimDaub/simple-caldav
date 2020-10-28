@@ -37,14 +37,18 @@ $ npm run test
 
 ## Changelog
 
+### 0.4.3
+
+- Include `href` to event when calling `getEvent` or `listEvents`
+
 ### 0.4.2
 
-- Add `LOCATION` property to VEVENT
-- Add `ORGANIZER;CN=:mailto` property to VEVENT
+- Add `LOCATION` property to VEVENT.
+- Add `ORGANIZER;CN=:mailto` property to VEVENT.
 
 ### 0.4.1
 
-- Fix UTC time zone shift calculation in `formatDateTime`
+- Fix UTC time zone shift calculation in `formatDateTime`.
 
 ### 0.4.0
 
@@ -54,7 +58,7 @@ $ npm run test
 ### 0.3.5
 
 - Bug fix: When adding multiple alarms, `,BEGIN:VALARM` would show up in VEVENT
-text
+text.
 
 ### 0.3.4
 
@@ -76,52 +80,54 @@ and simply returned an empty array.
 
 ### 0.3.0
 
-- Bug fix: Stop attempting to parse relative-time VALARMS, as [ical.js
-  isn't capable of doing that
-  either](https://github.com/mozilla-comm/ical.js/issues/451). Relative-time VALARMS are now ignored instead. Previously they threw.
+- Bug fix: Stop attempting to parse relative-time VALARMS, as [ical.js isn't
+  capable of doing that
+  either](https://github.com/mozilla-comm/ical.js/issues/451). Relative-time
+  VALARMS are now ignored instead. Previously they threw.
 
 ### 0.2.2
 
 - Bug fix: Ensure correct order of `etag` and `href` properties returned from
-  `syncCollection`
+  `syncCollection`.
 
 ### 0.2.1
 
-- Introduce new method for retrieving single events with `uid`: `getEvent(uid)`
-- Parse and include `VALARM`s in `getEvent` and `listEvents`
+- Introduce new method for retrieving single events with `uid`:
+  `getEvent(uid)`.
+- Parse and include `VALARM`s in `getEvent` and `listEvents`.
 
 ### 0.2.0
 
-- Removed `TraversalError` from code base entirely
-- `listEvents` now returns an empty array when no events are found or an invalid
-xml gets passed
+- Removed `TraversalError` from code base entirely.
+- `listEvents` now returns an empty array when no events are found or an
+  invalid xml gets passed.
 - Instead of throwing `TraversalError`, `SimpleCalDAV.traverseXML` now returns
-an empty array when path couldn't be found
-- Added `getSyncToken` method to retrieve a sync token from a server
+  an empty array when path couldn't be found.
+- Added `getSyncToken` method to retrieve a sync token from a server.
 - Added `syncCollection` to receive a diff of an entire collection with a sync
-token
-- Added `ServerError` that is thrown when there are problems with the server
+  token.
+- Added `ServerError` that is thrown when there are problems with the server.
 
 ### 0.1.3
 
-- Fix bug in VALARM construction
+- Fix bug in VALARM construction.
 
 ### 0.1.2
 
-- Fix bug in VEVENT construction
+- Fix bug in VEVENT construction.
 
 ### 0.1.1
 
-- Allow adding VALARMS to VEVENTS
+- Allow adding VALARMS to VEVENTS.
 
 ### 0.1.0
 
 - Transform ical.js events to simple JSON objects and all customizable
-transformation parameter on `listEvents` method
+  transformation parameter on `listEvents` method.
 
 ### 0.0.1
 
-- Initial release
+- Initial release.
 
 ## License
 
