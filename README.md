@@ -37,6 +37,13 @@ $ npm run test
 
 ## Changelog
 
+### 0.4.5
+
+- Add VALUE=DATE-TIME to absolute-time trigger in VALARM
+- Add support for [relative
+  triggers](https://www.kanzaki.com/docs/ical/trigger.html). `RELATED=` syntax
+  not yet supported
+
 ### 0.4.4
 
 - When updating an event, alarm's attendee would wrongly collect action
