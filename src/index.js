@@ -117,7 +117,9 @@ class SimpleCalDAV {
     }
     valarm += `ATTENDEE:${attendee}\n`;
     valarm += `DESCRIPTION:${alarm.description}\n`;
-    valarm += `TRIGGER:${SimpleCalDAV.formatDateTime(alarm.trigger)}\n`;
+    valarm += `TRIGGER;VALUE=DATE-TIME:${SimpleCalDAV.formatDateTime(
+      alarm.trigger
+    )}\n`;
     valarm += `END:VALARM\n`;
 
     return valarm;
@@ -321,11 +323,13 @@ class SimpleCalDAV {
           subject: alarm.getFirstPropertyValue("subject")
         };
 
-        if (action === "EMAIL") {
-          const [_, email] = attendee.match(new RegExp(".*mailto:(.+)$", "i"));
+        const mailtoExpr = new RegExp(".*mailto:(.+)$", "i");
+        const smsExpr = new RegExp(".*sms:(.+)$", "i");
+        if (action === "EMAIL" && mailtoExpr.test(attendee)) {
+          const [_, email] = attendee.match(mailtoExpr);
           res.attendee = email;
-        } else if (action === "SMS") {
-          const [_, phone] = attendee.match(new RegExp(".*sms:(.+)$", "i"));
+        } else if (action === "SMS" && smsExpr.test(attendee)) {
+          const [_, phone] = attendee.match(smsExpr);
           res.attendee = phone;
         }
 

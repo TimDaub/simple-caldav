@@ -81,8 +81,6 @@ test("fetching ics-incompatible response", async t => {
 
 test("fetching calendar single event without an alarm", async t => {
   const summary = "Work on this lib";
-  const action = "EMAIL";
-  const attendee = "attendee";
   const description = "description";
   const time = "20200729T130856Z";
   const subject = "bla";
@@ -163,8 +161,6 @@ END:VCALENDAR</C:calendar-data>
 
 test("fetching calendar single event without an alarm and without a status and a location", async t => {
   const summary = "Work on this lib";
-  const action = "EMAIL";
-  const attendee = "attendee";
   const description = "description";
   const time = "20200729T130856Z";
   const subject = "bla";
@@ -234,7 +230,7 @@ END:VCALENDAR</C:calendar-data>
 test("fetching calendar single event with a relative alarm trigger", async t => {
   const summary = "Work on this lib";
   const action = "EMAIL";
-  const attendee = "attendee";
+  const attendee = "attendee@mail.org";
   const description = "description";
   const time = "20200729T130856Z";
   const subject = "bla";
@@ -280,8 +276,9 @@ STATUS:CONFIRMED
 TRANSP:OPAQUE
 X-MOZ-GENERATION:1
 BEGIN:VALARM
-ACTION:DISPLAY
-DESCRIPTION:Mozilla Standardbeschreibung
+ACTION:EMAIL
+DESCRIPTION:Email reminder with relative trigger
+ATTENDEE:mailto:${attendee}
 TRIGGER:-PT15M
 END:VALARM
 END:VEVENT
@@ -309,7 +306,7 @@ END:VCALENDAR</C:calendar-data>
 test("fetching calendar single event", async t => {
   const summary = "Work on this lib";
   const action = "EMAIL";
-  const attendee = "attendee";
+  const attendee = "attendee@mail.org";
   const description = "description";
   const time = "20200729T130856Z";
   const subject = "bla";
@@ -363,7 +360,7 @@ LOCATION:${_location}
 ORGANIZER;CN=${organizer.commonName}:mailto:${organizer.email}
 BEGIN:VALARM
 ACTION:${action}
-ATTENDEE:${attendee}
+ATTENDEE:mailto:${attendee}
 DESCRIPTION:${description}
 TRIGGER;VALUE=DATE-TIME:${time}
 END:VALARM
@@ -755,7 +752,7 @@ test("transforming an email alarm into a VALARM", t => {
   t.assert(new RegExp("ACTION:EMAIL").test(valarm));
   t.assert(new RegExp(`SUMMARY:${alarm.summary}`).test(valarm));
   t.assert(new RegExp(`DESCRIPTION:${alarm.description}`).test(valarm));
-  t.assert(new RegExp("TRIGGER:\\d{8}T\\d{6}Z").test(valarm));
+  t.assert(new RegExp("TRIGGER;VALUE=DATE-TIME:\\d{8}T\\d{6}Z").test(valarm));
   t.assert(new RegExp(`ATTENDEE:mailto:${alarm.attendee}`).test(valarm));
 });
 
@@ -770,7 +767,9 @@ test("transforming an sms alarm into a VALARM", t => {
   const valarm = SimpleCalDAV.toVALARM(alarm);
   t.assert(new RegExp("ACTION:SMS\\n").test(valarm));
   t.assert(new RegExp(`DESCRIPTION:${alarm.description}\\n`).test(valarm));
-  t.assert(new RegExp("TRIGGER:\\d{8}T\\d{6}Z\\n").test(valarm));
+  t.assert(
+    new RegExp("TRIGGER;VALUE=DATE-TIME:\\d{8}T\\d{6}Z\\n").test(valarm)
+  );
   t.assert(new RegExp(`ATTENDEE:sms:${alarm.attendee}\\n`).test(valarm));
 });
 
@@ -857,7 +856,7 @@ test("getting collection with a sync token", async t => {
 
 test("getting a single event", async t => {
   const action = "EMAIL";
-  const attendee = "attendee";
+  const attendee = "attendee@mail.org";
   const description = "description";
   const time = "20200729T130856Z";
   const subject = "bla";
@@ -883,7 +882,7 @@ LOCATION:${_location}
 ORGANIZER;CN=${organizer.commonName}:mailto:${organizer.email}
 BEGIN:VALARM
 ACTION:${action}
-ATTENDEE:${attendee}
+ATTENDEE:mailto:${attendee}
 DESCRIPTION:${description}
 TRIGGER;VALUE=DATE-TIME:${time}
 END:VALARM
@@ -921,7 +920,7 @@ END:VCALENDAR\`);
 
 test("getting a single event but without any organizer present", async t => {
   const action = "EMAIL";
-  const attendee = "attendee";
+  const attendee = "attendee@mail.org";
   const description = "description";
   const time = "20200729T130856Z";
   const subject = "bla";
@@ -940,7 +939,7 @@ DTSTAMP:20200729T130856Z
 SUMMARY:new one
 BEGIN:VALARM
 ACTION:${action}
-ATTENDEE:${attendee}
+ATTENDEE:mailto:${attendee}
 DESCRIPTION:${description}
 TRIGGER;VALUE=DATE-TIME:${time}
 END:VALARM
@@ -975,7 +974,7 @@ END:VCALENDAR\`);
 
 test("getting a single event but only with organizer email present", async t => {
   const action = "EMAIL";
-  const attendee = "attendee";
+  const attendee = "attendee@mail.org";
   const description = "description";
   const time = "20200729T130856Z";
   const subject = "bla";
@@ -996,7 +995,7 @@ SUMMARY:new one
 ORGANIZER:mailto:${organizer.email}
 BEGIN:VALARM
 ACTION:${action}
-ATTENDEE:${attendee}
+ATTENDEE:mailto:${attendee}
 DESCRIPTION:${description}
 TRIGGER;VALUE=DATE-TIME:${time}
 END:VALARM
@@ -1031,11 +1030,6 @@ END:VCALENDAR\`);
 });
 
 test("getting a single event, but server returns html which is valid xml but not valid response", async t => {
-  const action = "EMAIL";
-  const attendee = "attendee";
-  const description = "description";
-  const time = "20200729T130856Z";
-  const subject = "bla";
   const worker = await createWorker(`
     app.get('/:uid', function (req, res) {
       res.status(200).send("<!doctype html><html></html>");
@@ -1180,7 +1174,7 @@ test("if two alarms cause a bug where a comma shows up in iCAL result", async t 
 
 test("updating an event to check whether mailto: and sms: multiply", async t => {
   const action = "EMAIL";
-  const attendee = "attendee";
+  const attendee = "attendee@mail.org";
   const description = "description";
   const time = "20200729T130856Z";
   const subject = "bla";

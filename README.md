@@ -46,7 +46,7 @@ $ npm run test
 
 ### 0.4.3
 
-- Include `href` to event when calling `getEvent` or `listEvents`
+- Include `href` to event when calling `getEvent` or `listEvents`.
 
 ### 0.4.2
 
