@@ -4,10 +4,11 @@ const createWorker = require("expressively-mocked-fetch");
 const dom = require("xmldom").DOMParser;
 const add = require("date-fns/add");
 const moment = require("moment");
+const { Time, Duration } = require("ical.js");
 
 const {
   SimpleCalDAV,
-  errors: { ParserError, ServerError }
+  errors: { ParserError, ServerError, InputError }
 } = require("../src/index.js");
 
 test("if parameters are correctly stored", t => {
@@ -24,6 +25,7 @@ test("if objects are correctly exported", t => {
   t.assert("SimpleCalDAV" in libObj);
   t.assert("ParserError" in libObj.errors);
   t.assert("ServerError" in libObj.errors);
+  t.assert("InputError" in libObj.errors);
 });
 
 test("test fetching empty calendar", async t => {
@@ -291,7 +293,7 @@ END:VCALENDAR</C:calendar-data>
       \`); 
     });
   `);
-
+  //TRIGGER;VALUE=DATE-TIME:20200729T140856Z
   const URI = `http://localhost:${worker.port}`;
   const dav = new SimpleCalDAV(URI);
   const events = await dav.listEvents();
@@ -299,7 +301,7 @@ END:VCALENDAR</C:calendar-data>
   t.assert(events[0].summary === summary);
   t.assert(events[0].start instanceof Date);
   t.assert(events[0].end instanceof Date);
-  t.assert(events[0].alarms.length === 0);
+  t.assert(events[0].alarms.length === 1);
   t.assert(events[0]._status === "CONFIRMED");
 });
 
@@ -754,6 +756,59 @@ test("transforming an email alarm into a VALARM", t => {
   t.assert(new RegExp(`DESCRIPTION:${alarm.description}`).test(valarm));
   t.assert(new RegExp("TRIGGER;VALUE=DATE-TIME:\\d{8}T\\d{6}Z").test(valarm));
   t.assert(new RegExp(`ATTENDEE:mailto:${alarm.attendee}`).test(valarm));
+});
+
+test("transforming an email alarm with a relative trigger into a VALARM", t => {
+  const alarm = {
+    action: "email",
+    summary: "Email's subject",
+    description: "email's description",
+    trigger: {
+      minutes: 15,
+      isNegative: true
+    },
+    attendee: "email@example.com"
+  };
+
+  const valarm = SimpleCalDAV.toVALARM(alarm);
+  t.assert(new RegExp("ACTION:EMAIL").test(valarm));
+  t.assert(new RegExp(`SUMMARY:${alarm.summary}`).test(valarm));
+  t.assert(new RegExp(`DESCRIPTION:${alarm.description}`).test(valarm));
+  t.assert(new RegExp(`TRIGGER:-PT${alarm.trigger.minutes}M`).test(valarm));
+  t.assert(new RegExp(`ATTENDEE:mailto:${alarm.attendee}`).test(valarm));
+});
+
+test("transforming an object to a negative relative trigger", t => {
+  const trigger = {
+    minutes: 15,
+    isNegative: true
+  };
+
+  const actual = SimpleCalDAV.toTrigger(trigger);
+  t.assert(new RegExp(`TRIGGER:-PT${trigger.minutes}M`).test(actual));
+});
+
+test("transforming an object to a positive relative trigger", t => {
+  const trigger = {
+    minutes: 15,
+    isNegative: false
+  };
+
+  const actual = SimpleCalDAV.toTrigger(trigger);
+  t.assert(new RegExp(`TRIGGER:PT${trigger.minutes}M`).test(actual));
+});
+
+test("if transforming into a trigger fails if input is incorrect", t => {
+  const wrong = {
+    hello: "world"
+  };
+
+  t.throws(() => SimpleCalDAV.toTrigger(wrong), { instanceOf: InputError });
+});
+
+test("transforming date to absolute trigger", t => {
+  const actual = SimpleCalDAV.toTrigger(new Date());
+  t.assert(new RegExp("TRIGGER;VALUE=DATE-TIME:\\d{8}T\\d{6}Z").test(actual));
 });
 
 test("transforming an sms alarm into a VALARM", t => {
@@ -1271,4 +1326,59 @@ END:VCALENDAR\`);
     "CONFIRMED"
   );
   t.assert(res.status === 201);
+});
+
+test("if absolute trigger is parsed correctly", t => {
+  const dateObj = {
+    year: 2012,
+    month: 10,
+    day: 11,
+    hour: 15,
+    minute: 0,
+    second: 0,
+    isDate: false
+  };
+  const time = new Time(dateObj);
+  const actual = SimpleCalDAV.parseTrigger(time);
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const actualLocalized = actual.toLocaleString("en-US", {
+    timeZone,
+    hour12: false
+  });
+  const expected = `${dateObj.month}/${dateObj.day}/${dateObj.year} ${
+    dateObj.hour
+  }:${dateObj.minute}:${dateObj.second}`;
+  t.assert(expected, actualLocalized);
+});
+
+test("if positive relative trigger (duration) is parsed correctly", t => {
+  const durObj = {
+    minutes: 123,
+    isNegative: false
+  };
+  const dur = new Duration(durObj);
+  const actual = SimpleCalDAV.parseTrigger(dur);
+  t.deepEqual({ ...durObj, weeks: 0, days: 0, hours: 0, seconds: 0 }, actual);
+});
+
+test("if negative relative trigger (duration) is parsed correctly", t => {
+  const durObj = {
+    minutes: 123,
+    isNegative: true
+  };
+  const dur = new Duration(durObj);
+  const actual = SimpleCalDAV.parseTrigger(dur);
+  t.deepEqual({ ...durObj, weeks: 0, days: 0, hours: 0, seconds: 0 }, actual);
+});
+
+test("if error is thrown when incorrect object is attempted to be parsed", t => {
+  class Wrong {
+    constructor() {}
+  }
+  t.throws(
+    () => {
+      SimpleCalDAV.parseTrigger(new Wrong());
+    },
+    { instanceOf: InputError }
+  );
 });

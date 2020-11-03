@@ -1,5 +1,5 @@
 // @format
-const ical = require("ical.js");
+const { Component, Event, Duration, Time, parse } = require("ical.js");
 const fetch = require("cross-fetch");
 const { select } = require("xpath");
 const dom = require("xmldom").DOMParser;
@@ -35,6 +35,18 @@ class ParserError extends Error {
     }
 
     this.name = "ParserError";
+  }
+}
+
+class InputError extends Error {
+  constructor(...params) {
+    super(...params);
+
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, InputError);
+    }
+
+    this.name = "InputError";
   }
 }
 
@@ -94,6 +106,26 @@ class SimpleCalDAV {
     return uid;
   }
 
+  static toTrigger(val) {
+    let trigger;
+    if (val instanceof Date) {
+      return `TRIGGER;VALUE=DATE-TIME:${SimpleCalDAV.formatDateTime(val)}\n`;
+    } else if (
+      (typeof val === "object" && "weeks" in val) ||
+      "days" in val ||
+      "hours" in val ||
+      "minutes" in val ||
+      "seconds" in val
+    ) {
+      const dur = new Duration(val);
+      return `TRIGGER:${dur.toString()}\n`;
+    } else {
+      throw new InputError(
+        "Input needs to be of type Date or a object with a specific shape (check implementation)"
+      );
+    }
+  }
+
   static toVALARM(alarm) {
     let attendee;
     if (alarm && alarm.attendee && alarm.action.toUpperCase() === "EMAIL") {
@@ -117,9 +149,7 @@ class SimpleCalDAV {
     }
     valarm += `ATTENDEE:${attendee}\n`;
     valarm += `DESCRIPTION:${alarm.description}\n`;
-    valarm += `TRIGGER;VALUE=DATE-TIME:${SimpleCalDAV.formatDateTime(
-      alarm.trigger
-    )}\n`;
+    valarm += SimpleCalDAV.toTrigger(alarm.trigger);
     valarm += `END:VALARM\n`;
 
     return valarm;
@@ -274,7 +304,7 @@ class SimpleCalDAV {
   static parseICS(evt) {
     let parsedCal;
     try {
-      parsedCal = ICAL.parse(evt);
+      parsedCal = parse(evt);
     } catch (err) {
       if (err && err.name === "ParserError") {
         throw new ParserError(err.message);
@@ -285,13 +315,32 @@ class SimpleCalDAV {
       }
     }
 
-    const comp = new ICAL.Component(parsedCal);
+    const comp = new Component(parsedCal);
     const vevent = comp.getFirstSubcomponent("vevent");
     return vevent;
   }
 
   static genETag(s) {
     return sha1(s);
+  }
+
+  static parseTrigger(trigger) {
+    if (trigger instanceof Time) {
+      return trigger.toJSDate();
+    } else if (trigger instanceof Duration) {
+      return {
+        weeks: trigger.weeks,
+        days: trigger.days,
+        hours: trigger.hours,
+        minutes: trigger.minutes,
+        seconds: trigger.seconds,
+        isNegative: trigger.isNegative
+      };
+    } else {
+      throw new InputError(
+        "`trigger` argument wasn't of instance Duration or Time"
+      );
+    }
   }
 
   static simplifyEvent(evt, href) {
@@ -301,18 +350,9 @@ class SimpleCalDAV {
     let valarms = evt.getAllSubcomponents("valarm");
     valarms = valarms
       .map(alarm => {
-        let trigger;
-        try {
-          trigger = alarm.getFirstPropertyValue("trigger").toJSDate();
-        } catch (err) {
-          if (err instanceof TypeError) {
-            console.warn("Skipping VALARM because TRIGGER not parseable");
-            // NOTE: ical.js cannot parse relative at the moment: https://github.com/mozilla-comm/ical.js/issues/451
-            return;
-          } else {
-            console.log(err);
-          }
-        }
+        const trigger = SimpleCalDAV.parseTrigger(
+          alarm.getFirstPropertyValue("trigger")
+        );
 
         const action = alarm.getFirstPropertyValue("action");
         const attendee = alarm.getFirstPropertyValue("attendee");
@@ -338,7 +378,7 @@ class SimpleCalDAV {
       .filter(alarm => !!alarm);
     finalEvent.alarms = valarms;
 
-    const pevent = new ICAL.Event(evt);
+    const pevent = new Event(evt);
     finalEvent.summary = pevent.summary;
     finalEvent.location = pevent._firstProp("location");
     finalEvent.start = pevent.startDate.toJSDate();
@@ -558,6 +598,7 @@ module.exports = {
   SimpleCalDAV,
   errors: {
     ParserError,
-    ServerError
+    ServerError,
+    InputError
   }
 };
