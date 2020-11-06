@@ -37,6 +37,13 @@ $ npm run test
 
 ## Changelog
 
+### 0.4.6
+
+- Add `static applyDuration(date, duration)` that allows applying an
+  [specifically-shaped](https://github.com/TimDaub/simple-caldav/blob/0a924c33a5f4392dc1331f151e589a024b4580c2/src/index.js#L331)
+  [duration](https://www.kanzaki.com/docs/ical/duration.html) to a JavaScript
+  `Date`.
+
 ### 0.4.5
 
 - Add VALUE=DATE-TIME to absolute-time trigger in VALARM.
