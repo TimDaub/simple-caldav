@@ -3,6 +3,7 @@ const test = require("ava");
 const createWorker = require("expressively-mocked-fetch");
 const dom = require("xmldom").DOMParser;
 const add = require("date-fns/add");
+const sub = require("date-fns/sub");
 const moment = require("moment");
 const { Time, Duration } = require("ical.js");
 
@@ -1380,5 +1381,81 @@ test("if error is thrown when incorrect object is attempted to be parsed", t => 
       SimpleCalDAV.parseTrigger(new Wrong());
     },
     { instanceOf: InputError }
+  );
+});
+
+test("if negative duration yields negative seconds value", t => {
+  const durObj = {
+    minutes: 1,
+    isNegative: true
+  };
+  const dur = new Duration(durObj);
+  t.assert(dur.toSeconds() === -60);
+});
+
+test("if date-fns add can handle negative values", t => {
+  const now = new Date();
+  t.assert(
+    add(now, { seconds: -1 }).toISOString() ===
+      sub(now, { seconds: 1 }).toISOString()
+  );
+});
+
+test("if adding a negative duration is same as subtracting a positive duration", t => {
+  const now = new Date();
+  const durObj = {
+    minutes: 1,
+    isNegative: true
+  };
+  const dur = new Duration(durObj);
+  const durObjPos = {
+    minutes: 1,
+    isNegative: false
+  };
+  const durPos = new Duration(durObjPos);
+  t.assert(
+    add(now, { seconds: dur.toSeconds() }).toISOString() ===
+      sub(now, { seconds: durPos.toSeconds() }).toISOString()
+  );
+});
+
+test("if durations are applied to a date correctly", t => {
+  const now = new Date();
+  const durObj = {
+    minutes: 1,
+    isNegative: true
+  };
+  const dur = new Duration(durObj);
+  t.assert(
+    add(now, { seconds: dur.toSeconds() }).toISOString() ===
+      SimpleCalDAV.applyDuration(now, durObj).toISOString()
+  );
+});
+
+test("if error is thrown when wrong parameters are submitted when applying duration", t => {
+  t.throws(() => SimpleCalDAV.applyDuration("this is wrong"), {
+    instanceOf: InputError
+  });
+  t.throws(() => SimpleCalDAV.applyDuration(new Date(), null), {
+    instanceOf: InputError
+  });
+  t.throws(() => SimpleCalDAV.applyDuration(new Date(), { minutes: 1 }), {
+    instanceOf: InputError
+  });
+  t.throws(
+    () => SimpleCalDAV.applyDuration(new Date(), { isNegative: false }),
+    {
+      instanceOf: InputError
+    }
+  );
+  t.throws(
+    () =>
+      SimpleCalDAV.applyDuration(new Date(), {
+        otherthings: "abc",
+        isNegative: true
+      }),
+    {
+      instanceOf: InputError
+    }
   );
 });

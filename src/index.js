@@ -5,6 +5,7 @@ const { select } = require("xpath");
 const dom = require("xmldom").DOMParser;
 const { v4: uuidv4 } = require("uuid");
 const { format, utcToZonedTime } = require("date-fns-tz");
+const add = require("date-fns/add");
 // NOTE: We decided on using sha1 for generating etags, as there's no mutual
 // crypto API for simple-caldav's targets, which are nodejs and browser
 // environments.
@@ -104,6 +105,27 @@ class SimpleCalDAV {
   static extractUid(href) {
     const [_, uid] = href.match(new RegExp("([^\\/]+)\\.ics"));
     return uid;
+  }
+
+  static applyDuration(date, duration) {
+    if (
+      date instanceof Date &&
+      duration &&
+      typeof duration === "object" &&
+      "isNegative" in duration &&
+      (duration.weeks ||
+        duration.days ||
+        duration.hours ||
+        duration.minutes ||
+        duration.seconds)
+    ) {
+      const durObj = new Duration(duration);
+      return add(date, { seconds: durObj.toSeconds() });
+    } else {
+      throw new InputError(
+        "Incorrect parameters submitted to applyDuration (date or duration), check implementation for more details."
+      );
+    }
   }
 
   static toTrigger(val) {
