@@ -37,6 +37,11 @@ $ npm run test
 
 ## Changelog
 
+### 0.5.0
+
+- Remove `xpath` and `xmldom` dependencies for smaller builds
+- Remove `getETags` method
+
 ### 0.4.6
 
 - Add `static applyDuration(date, duration)` that allows applying an
