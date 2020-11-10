@@ -30,8 +30,7 @@
     "ical.js": "github:TimDaub/ical.js#feat/detect-module-mode-build",
     "sha1": "1.1.1",
     "uuid": "8.2.0",
-    "xmldom": "0.3.0",
-    "xpath": "0.0.27"
+    "xmldoc": "1.1.2"
   },
   "devDependencies": {
     "ava": "3.10.1",

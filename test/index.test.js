@@ -1,7 +1,6 @@
 // @format
 const test = require("ava");
 const createWorker = require("expressively-mocked-fetch");
-const dom = require("xmldom").DOMParser;
 const add = require("date-fns/add");
 const sub = require("date-fns/sub");
 const moment = require("moment");
@@ -509,109 +508,6 @@ END:VCALENDAR</C:calendar-data>
   t.assert(events[0].end instanceof Date);
   t.assert(events[0]._status === "TENTATIVE");
   t.assert(events[1]._status === "CONFIRMED");
-});
-
-test("traversing a correct XML tree", async t => {
-  const expected = "def";
-  const expected2 = "lel";
-  const s = `<?xml version="1.0" encoding="UTF-8"?>
-  <multistatus xmlns="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
-     <response>
-        <href>/radicale/example%40gmail.com/8409b6d2-8dcc-997b-45d6-517801237d38/50113370-f61f-4444-9e94-e3ba1d2467b8.ics</href>
-        <propstat>
-           <prop>
-              <getetag>"aa98130e9fac911f70a73dac8b57e58a482b04ec4b8a5417dfedf8f42069c6d0"</getetag>
-							<abc>${expected}</abc>
-           </prop>
-           <status>HTTP/1.1 200 OK</status>
-        </propstat>
-     </response>
-     <response>
-        <href>/radicale/example%40gmail.com/8409b6d2-8dcc-997b-45d6-517801237d38/50113370-f61f-4444-9e94-e3ba1d2467b8.ics</href>
-        <propstat>
-           <prop>
-              <getetag>"aa98130e9fac911f70a73dac8b57e58a482b04ec4b8a5417dfedf8f42069c6d0"</getetag>
-							<abc>${expected2}</abc>
-           </prop>
-           <status>HTTP/1.1 200 OK</status>
-        </propstat>
-     </response>
-  </multistatus>
-  `;
-  const doc = new dom().parseFromString(s, "text/xml");
-
-  const instruction = {
-    href: "//*[local-name()='href']/text()",
-    etag: "//*[local-name(.)='getetag']/text()",
-    abc: "//*[local-name(.)='abc']/text()"
-  };
-  const content = SimpleCalDAV.traverseXML(doc, instruction);
-  t.assert("href" in content && "etag" in content && "abc" in content);
-  t.assert(content.abc.length === 2);
-  t.assert(content.abc[0] === expected);
-  t.assert(content.abc[1] === expected2);
-});
-
-test.skip("traversing a correct XML tree where values are missing", async t => {
-  const s = `<?xml version="1.0" encoding="UTF-8"?>
-    <res>
-      <key2>value2</key2>
-      <status>missing</status>
-    </res>
-    <res>
-      <key1>value1</key1>
-      <key2>value2</key2>
-    </res>
-  `;
-  const doc = new dom().parseFromString(s, "text/xml");
-
-  const instruction = {
-    key1: "//*[local-name()='key1']/text()",
-    key2: "//*[local-name(.)='key2']/text()"
-  };
-  const content = SimpleCalDAV.traverseXML(doc, instruction);
-  t.assert(content.key1[0] === null);
-  t.assert(content.key1[1] === "value1");
-  t.assert(content.key2[0] === "value1");
-  t.assert(content.key2[1] === "value2");
-});
-
-test("synching etag", async t => {
-  const etag1 = "etag1";
-  const etag2 = "etag2";
-  const worker = await createWorker(`
-    app.report('/', function (req, res) {
-      res.send(\`<?xml version="1.0" encoding="UTF-8"?>
-        <multistatus xmlns="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
-           <response>
-              <href>/radicale/example%40gmail.com/8409b6d2-8dcc-997b-45d6-517801237d38/50113370-f61f-4444-9e94-e3ba1d2467b8.ics</href>
-              <propstat>
-                 <prop>
-                    <getetag>${etag1}</getetag>
-                 </prop>
-                 <status>HTTP/1.1 200 OK</status>
-              </propstat>
-           </response>
-           <response>
-              <href>/radicale/example%40gmail.com/8409b6d2-8dcc-997b-45d6-517801237d38/50113370-f61f-4444-9e94-e3ba1d2467b8.ics</href>
-              <propstat>
-                 <prop>
-                    <getetag>${etag2}</getetag>
-                 </prop>
-                 <status>HTTP/1.1 200 OK</status>
-              </propstat>
-           </response>
-        </multistatus>
-      \`);
-    });
-  `);
-
-  const URI = `http://localhost:${worker.port}`;
-  const dav = new SimpleCalDAV(URI);
-  const etags = await dav.getETags();
-  t.assert("href" in etags && "etag" in etags);
-  t.assert(etags.href.length == 2);
-  t.assert(etags.etag.length == 2);
 });
 
 test("formatting a date to iCal compliant date time", t => {
@@ -1458,4 +1354,39 @@ test("if error is thrown when wrong parameters are submitted when applying durat
       instanceOf: InputError
     }
   );
+});
+
+test("if xmldoc can serve simple-caldav's use cases", t => {
+  const xmldoc = require("xmldoc");
+  const href1 = "href1";
+  const href2 = "href2";
+  const content1 = "content1";
+  const content2 = "content2";
+  const s = `<?xml version="1.0" encoding="UTF-8"?>
+  <multistatus xmlns="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+     <response>
+        <href>${href1}</href>
+        <propstat>
+           <prop>
+							<abc>${content1}</abc>
+           </prop>
+           <status>HTTP/1.1 200 OK</status>
+        </propstat>
+     </response>
+     <response>
+        <href>${href2}</href>
+        <propstat>
+           <prop>
+							<abc>${content2}</abc>
+           </prop>
+           <status>HTTP/1.1 200 OK</status>
+        </propstat>
+     </response>
+  </multistatus>
+  `;
+  const doc = new xmldoc.XmlDocument(s);
+  t.assert(
+    doc.childrenNamed("response")[1].descendantWithPath("href").val === href2
+  );
+  t.assert(doc.descendantWithPath("response.href").val === href1);
 });
