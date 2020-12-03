@@ -45,10 +45,16 @@ $ npm run test
 
 ## Changelog
 
+### 0.6.0
+
+- For all `fetch` requests, allow passing credentials by using `credentials:
+  true`
+- Add note on CORS
+
 ### 0.5.0
 
-- Remove `xpath` and `xmldom` dependencies for smaller builds
-- Remove `getETags` method
+- Remove `xpath` and `xmldom` dependencies for smaller builds.
+- Remove `getETags` method.
 
 ### 0.4.6
 
