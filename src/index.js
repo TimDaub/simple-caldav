@@ -262,6 +262,7 @@ class SimpleCalDAV {
     return await fetch(`${this.uri}/${uid}.ics`, {
       method: "PUT",
       headers,
+      credentials: "include",
       body
     });
   }
@@ -272,7 +273,8 @@ class SimpleCalDAV {
       method: "GET",
       headers: {
         "Content-Type": "application/xml; charset=utf-8"
-      }
+      },
+      credentials: "include"
     });
     let evt = await res.text();
     evt = SimpleCalDAV.parseICS(evt);
@@ -285,7 +287,7 @@ class SimpleCalDAV {
       headers: {
         "Content-Type": "application/xml; charset=utf-8"
       },
-      // TODO: At one point, we could start templating this...
+      credentials: "include",
       body: `
         <c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
            <d:prop>
@@ -434,6 +436,7 @@ class SimpleCalDAV {
         Depth: 0,
         "Content-Type": "application/xml; charset=utf-8"
       },
+      credentials: "include",
       body: `
         <d:propfind xmlns:d="DAV:" xmlns:cs="http://calendarserver.org/ns/">
           <d:prop>
@@ -484,6 +487,7 @@ class SimpleCalDAV {
       headers: {
         "Content-Type": "application/xml; charset=utf-8"
       },
+      credentials: "include",
       body
     });
 
