@@ -27,6 +27,14 @@ For now, see [tests](./test/index.test.js).
   `_status` to make sure we're not violating any [reserved words rules of
   JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar#Keywords).
 
+### Usage and CORS
+
+When using `simple-caldav` in combination with a remote server and CORS starts
+to become an issue, make sure you allow the following CORS properties:
+
+- methods that need to be allowed: `GET, POST, PUT, DELETE, REPORT, PROPFIND, OPTIONS`
+- headers that need to be allowed: `Content-Type`, `If-None-Match`, `Depth`
+
 ## Contributing
 
 ```bash
