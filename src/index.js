@@ -51,8 +51,9 @@ class InputError extends Error {
 }
 
 class SimpleCalDAV {
-  constructor(uri) {
+  constructor(uri, options) {
     this.uri = uri;
+    this.options = options;
   }
 
   async createEvent(
@@ -262,7 +263,7 @@ class SimpleCalDAV {
     return await fetch(`${this.uri}/${uid}.ics`, {
       method: "PUT",
       headers,
-      credentials: "include",
+      ...this.options,
       body
     });
   }
@@ -274,7 +275,7 @@ class SimpleCalDAV {
       headers: {
         "Content-Type": "application/xml; charset=utf-8"
       },
-      credentials: "include"
+      ...this.options
     });
     let evt = await res.text();
     evt = SimpleCalDAV.parseICS(evt);
@@ -287,7 +288,7 @@ class SimpleCalDAV {
       headers: {
         "Content-Type": "application/xml; charset=utf-8"
       },
-      credentials: "include",
+      ...this.options,
       body: `
         <c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
            <d:prop>
@@ -436,7 +437,7 @@ class SimpleCalDAV {
         Depth: 0,
         "Content-Type": "application/xml; charset=utf-8"
       },
-      credentials: "include",
+      ...this.options,
       body: `
         <d:propfind xmlns:d="DAV:" xmlns:cs="http://calendarserver.org/ns/">
           <d:prop>
@@ -487,7 +488,7 @@ class SimpleCalDAV {
       headers: {
         "Content-Type": "application/xml; charset=utf-8"
       },
-      credentials: "include",
+      ...this.options,
       body
     });
 

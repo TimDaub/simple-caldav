@@ -19,6 +19,16 @@ $ npm i --save simple-caldav
 
 ## Usage
 
+```js
+const SimpleCalDAV = require("simple-caldav");
+const URI = "https://example.com/cal/";
+
+const dav = new SimpleCalDAV(URI, { credentials: "include", mode: "cors"});
+const evt = dav.getEvent("abc")
+  .then(console.log)
+  .catch(console.log);
+```
+
 For now, see [tests](./test/index.test.js).
 
 ### Notes
@@ -26,6 +36,9 @@ For now, see [tests](./test/index.test.js).
 - We translate a VEVENT's `STATUS` in the whole library to the name
   `_status` to make sure we're not violating any [reserved words rules of
   JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar#Keywords).
+- When initializing `new SimpleCalDAV` [`fetch` request
+  options](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch)
+  can be supplied on the second parameter (type object).
 
 ### Usage and CORS
 

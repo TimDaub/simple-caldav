@@ -1390,3 +1390,27 @@ test("if xmldoc can serve simple-caldav's use cases", t => {
   );
   t.assert(doc.descendantWithPath("response.href").val === href1);
 });
+
+test("if options are included in fetch requests", async t => {
+  const worker = await createWorker(
+    `
+    const fn = function (req, res) {
+      if (req.get("X-TEST") === "test") {
+        res.status(200).send();
+      } else {
+        res.status(500).send();
+      }
+    };
+
+    app.put("/:uid", fn);
+  `,
+    2
+  );
+  const URI = `http://localhost:${worker.port}`;
+
+  const dav = new SimpleCalDAV(URI, { headers: { "X-TEST": "test" } });
+  const start = new Date();
+  const end = add(new Date(), { hours: 1 });
+  const res = await dav.createEvent(start, end);
+  t.assert(res.status === 200);
+});
