@@ -58,6 +58,13 @@ $ npm run test
 
 ## Changelog
 
+### 0.7.0
+
+- Instead of passing `fetch`'s `credentials` option as `"include"` by
+  default, it's now possible to add `fetch` request options when
+  initializing the `SimpleCalDAV` class.
+- `credentials: "include"` aren't passed as default anymore.
+
 ### 0.6.0
 
 - For all `fetch` requests, allow passing credentials by using `credentials:
