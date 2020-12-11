@@ -24,6 +24,8 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
-    - run: mkdir -p $HOME/.ssh/ && echo "140.82.113.4" >> $HOME/.ssh/known_hosts
+    - uses: webfactory/ssh-agent@v0.4.1
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
     - run: npm ci
     - run: npm test
