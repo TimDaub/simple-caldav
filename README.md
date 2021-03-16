@@ -56,6 +56,9 @@ $ cd simple-caldav && npm i
 $ npm run test
 ```
 
+The process outlined in [PUBLISH.md](./PUBLISH.md) SHOULD be followed when
+releasing a new version of simple-caldav.
+
 ## Changelog
 
 ### 0.7.0
