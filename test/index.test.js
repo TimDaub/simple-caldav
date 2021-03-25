@@ -85,7 +85,6 @@ test("fetching calendar single event without an alarm", async t => {
   const summary = "Work on this lib";
   const description = "description";
   const time = "20200729T130856Z";
-  const subject = "bla";
   const _location = "Friedrichstrasse 3, 46145 Oberhausen Stadtmitte";
   const href =
     "/radicale/example%40gmail.com/8409b6d2-8dcc-997b-45d6-517801237d38/50113370-f61f-4444-9e94-e3ba1d2467b8.ics";
@@ -143,7 +142,7 @@ END:VCALENDAR</C:calendar-data>
       </propstat>
    </response>
 </multistatus>
-      \`); 
+      \`);
     });
   `);
 
@@ -151,12 +150,12 @@ END:VCALENDAR</C:calendar-data>
   const dav = new SimpleCalDAV(URI);
   const events = await dav.listEvents();
   t.assert(events.length === 1);
-  t.assert(events[0].summary === summary);
+  t.assert(events[0].summary.value === summary);
   t.assert(events[0].start instanceof Date);
   t.assert(events[0].end instanceof Date);
   t.assert(events[0].alarms.length === 0);
   t.assert(events[0]._status === "TENTATIVE");
-  t.assert(events[0].location === _location);
+  t.assert(events[0]._location.value === _location);
   t.assert(events[0].href === URI + href);
   t.deepEqual(events[0].organizer, organizer);
 });
@@ -165,7 +164,6 @@ test("fetching calendar single event without an alarm and without a status and a
   const summary = "Work on this lib";
   const description = "description";
   const time = "20200729T130856Z";
-  const subject = "bla";
   const worker = await createWorker(`
     app.report('/', function (req, res) {
       res.send(\`
@@ -213,7 +211,7 @@ END:VCALENDAR</C:calendar-data>
       </propstat>
    </response>
 </multistatus>
-      \`); 
+      \`);
     });
   `);
 
@@ -221,7 +219,7 @@ END:VCALENDAR</C:calendar-data>
   const dav = new SimpleCalDAV(URI);
   const events = await dav.listEvents();
   t.assert(events.length === 1);
-  t.assert(events[0].summary === summary);
+  t.assert(events[0].summary.value === summary);
   t.assert(events[0].start instanceof Date);
   t.assert(events[0].end instanceof Date);
   t.assert(events[0].alarms.length === 0);
@@ -235,7 +233,6 @@ test("fetching calendar single event with a relative alarm trigger", async t => 
   const attendee = "attendee@mail.org";
   const description = "description";
   const time = "20200729T130856Z";
-  const subject = "bla";
   const worker = await createWorker(`
     app.report('/', function (req, res) {
       res.send(\`
@@ -290,7 +287,7 @@ END:VCALENDAR</C:calendar-data>
       </propstat>
    </response>
 </multistatus>
-      \`); 
+      \`);
     });
   `);
   //TRIGGER;VALUE=DATE-TIME:20200729T140856Z
@@ -298,7 +295,7 @@ END:VCALENDAR</C:calendar-data>
   const dav = new SimpleCalDAV(URI);
   const events = await dav.listEvents();
   t.assert(events.length === 1);
-  t.assert(events[0].summary === summary);
+  t.assert(events[0].summary.value === summary);
   t.assert(events[0].start instanceof Date);
   t.assert(events[0].end instanceof Date);
   t.assert(events[0].alarms.length === 1);
@@ -311,7 +308,6 @@ test("fetching calendar single event", async t => {
   const attendee = "attendee@mail.org";
   const description = "description";
   const time = "20200729T130856Z";
-  const subject = "bla";
   const _location = "Friedrichstrasse 3, 46145 Oberhausen Stadtmitte";
   const organizer = {
     commonName: "John Smith",
@@ -369,7 +365,7 @@ END:VALARM
 BEGIN:VALARM
 ACTION:EMAIL
 ATTENDEE:mailto:me@example.com
-SUBJECT:${subject}
+SUMMARY:${summary}
 DESCRIPTION:A email body
 TRIGGER;VALUE=DATE-TIME:20200729T140856Z
 END:VALARM
@@ -380,7 +376,7 @@ END:VCALENDAR</C:calendar-data>
       </propstat>
    </response>
 </multistatus>
-      \`); 
+      \`);
     });
   `);
 
@@ -388,18 +384,18 @@ END:VCALENDAR</C:calendar-data>
   const dav = new SimpleCalDAV(URI);
   const events = await dav.listEvents();
   t.assert(events.length === 1);
-  t.assert(events[0].summary === summary);
+  t.assert(events[0].summary.value === summary);
   t.assert(events[0].start instanceof Date);
   t.assert(events[0].end instanceof Date);
   t.assert(events[0]._status === "CONFIRMED");
   t.deepEqual(events[0].organizer, organizer);
-  t.assert((events[0].location = _location));
+  t.assert((events[0]._location.value = _location));
   t.assert(events[0].alarms.length === 2);
   t.assert(events[0].alarms[0].action === action);
   t.assert(events[0].alarms[0].attendee === attendee);
   t.assert(events[0].alarms[0].trigger instanceof Date);
 
-  t.assert(events[0].alarms[1].subject === subject);
+  t.assert(events[0].alarms[1].summary.value === summary);
 });
 
 test("fetching calendar with multiple events", async t => {
@@ -503,7 +499,7 @@ END:VCALENDAR</C:calendar-data>
   const dav = new SimpleCalDAV(URI);
   const events = await dav.listEvents();
   t.assert(events.length === 2);
-  t.assert(events[0].summary === summary);
+  t.assert(events[0].summary.value === summary);
   t.assert(events[0].start instanceof Date);
   t.assert(events[0].end instanceof Date);
   t.assert(events[0]._status === "TENTATIVE");
@@ -559,14 +555,14 @@ test("creating an event with alarm", async t => {
   const alarms = [
     {
       action: "email",
-      summary: "Email's subject",
+      summary: "Email's summary",
       description: "email's description",
       trigger: new Date(),
       attendee: "email@example.com"
     },
     {
       action: "email",
-      summary: "Email's subject",
+      summary: "Email's summary",
       description: "email's description",
       trigger: add(new Date(), { hours: 1 }),
       attendee: "email@example.com"
@@ -595,10 +591,14 @@ test("transforming an event without alarms to a VEVENT", t => {
   const evt = {
     start: new Date(),
     end: new Date(),
-    summary: "abc",
+    summary: {
+      value: "abc"
+    },
     uid: "uid",
     _status: "CONFIRMED",
-    _location: "Friedrichstrasse 3, 46145 Oberhausen Stadtmitte",
+    _location: {
+      value: "Friedrichstrasse 3, 46145 Oberhausen Stadtmitte"
+    },
     organizer: {
       commonName: "John Smith",
       email: "john@smith.com"
@@ -611,7 +611,7 @@ test("transforming an event without alarms to a VEVENT", t => {
   t.assert(new RegExp("DTEND:\\d{8}T\\d{6}Z\\n").test(vevent));
   t.assert(new RegExp("DTSTAMP:\\d{8}T\\d{6}Z\\n").test(vevent));
   t.assert(new RegExp("STATUS:CONFIRMED\\n").test(vevent));
-  t.assert(new RegExp(`LOCATION:${evt._location}\\n`).test(vevent));
+  t.assert(new RegExp(`LOCATION:${evt._location.value}\\n`).test(vevent));
   t.assert(
     new RegExp(
       `ORGANIZER;CN=${evt.organizer.commonName}:mailto:${
@@ -641,16 +641,18 @@ test("transforming an event with an organizer and no common name", t => {
 test("transforming an email alarm into a VALARM", t => {
   const alarm = {
     action: "email",
-    summary: "Email's subject",
-    description: "email's description",
+    summary: {
+      value: "Email's summary"
+    },
+    description: { value: "email's description" },
     trigger: new Date(),
     attendee: "email@example.com"
   };
 
   const valarm = SimpleCalDAV.toVALARM(alarm);
   t.assert(new RegExp("ACTION:EMAIL").test(valarm));
-  t.assert(new RegExp(`SUMMARY:${alarm.summary}`).test(valarm));
-  t.assert(new RegExp(`DESCRIPTION:${alarm.description}`).test(valarm));
+  t.assert(new RegExp(`SUMMARY:${alarm.summary.value}`).test(valarm));
+  t.assert(new RegExp(`DESCRIPTION:${alarm.description.value}`).test(valarm));
   t.assert(new RegExp("TRIGGER;VALUE=DATE-TIME:\\d{8}T\\d{6}Z").test(valarm));
   t.assert(new RegExp(`ATTENDEE:mailto:${alarm.attendee}`).test(valarm));
 });
@@ -658,8 +660,12 @@ test("transforming an email alarm into a VALARM", t => {
 test("transforming an email alarm with a relative trigger into a VALARM", t => {
   const alarm = {
     action: "email",
-    summary: "Email's subject",
-    description: "email's description",
+    summary: {
+      value: "Email's summary"
+    },
+    description: {
+      value: "email's description"
+    },
     trigger: {
       minutes: 15,
       isNegative: true
@@ -669,8 +675,8 @@ test("transforming an email alarm with a relative trigger into a VALARM", t => {
 
   const valarm = SimpleCalDAV.toVALARM(alarm);
   t.assert(new RegExp("ACTION:EMAIL").test(valarm));
-  t.assert(new RegExp(`SUMMARY:${alarm.summary}`).test(valarm));
-  t.assert(new RegExp(`DESCRIPTION:${alarm.description}`).test(valarm));
+  t.assert(new RegExp(`SUMMARY:${alarm.summary.value}`).test(valarm));
+  t.assert(new RegExp(`DESCRIPTION:${alarm.description.value}`).test(valarm));
   t.assert(new RegExp(`TRIGGER:-PT${alarm.trigger.minutes}M`).test(valarm));
   t.assert(new RegExp(`ATTENDEE:mailto:${alarm.attendee}`).test(valarm));
 });
@@ -711,14 +717,18 @@ test("transforming date to absolute trigger", t => {
 test("transforming an sms alarm into a VALARM", t => {
   const alarm = {
     action: "sms",
-    description: "sms's description",
+    description: {
+      value: "sms's description"
+    },
     trigger: new Date(),
     attendee: "0123456789"
   };
 
   const valarm = SimpleCalDAV.toVALARM(alarm);
   t.assert(new RegExp("ACTION:SMS\\n").test(valarm));
-  t.assert(new RegExp(`DESCRIPTION:${alarm.description}\\n`).test(valarm));
+  t.assert(
+    new RegExp(`DESCRIPTION:${alarm.description.value}\\n`).test(valarm)
+  );
   t.assert(
     new RegExp("TRIGGER;VALUE=DATE-TIME:\\d{8}T\\d{6}Z\\n").test(valarm)
   );
@@ -811,7 +821,7 @@ test("getting a single event", async t => {
   const attendee = "attendee@mail.org";
   const description = "description";
   const time = "20200729T130856Z";
-  const subject = "bla";
+  const summary = "bla";
   const _location = "Friedrichstrasse 3, 46145 Oberhausen Stadtmitte";
   const uid = "abc";
   const organizer = {
@@ -841,7 +851,7 @@ END:VALARM
 BEGIN:VALARM
 ACTION:EMAIL
 ATTENDEE:mailto:me@example.com
-SUBJECT:${subject}
+SUMMARY:${summary}
 DESCRIPTION:A email body
 TRIGGER;VALUE=DATE-TIME:20200729T140856Z
 END:VALARM
@@ -858,8 +868,8 @@ END:VCALENDAR\`);
   t.assert("alarms" in evt);
   t.assert("_status" in evt);
   t.assert("organizer" in evt);
-  t.assert("location" in evt);
-  t.assert(evt.location === _location);
+  t.assert("_location" in evt);
+  t.assert(evt._location.value === _location);
   t.deepEqual(evt.organizer, organizer);
   t.assert(evt.href === `${URI}/${uid}.ics`);
   t.assert(evt.alarms.length === 2);
@@ -867,7 +877,7 @@ END:VCALENDAR\`);
   t.assert(evt.alarms[0].attendee === attendee);
   t.assert(evt.alarms[0].trigger instanceof Date);
 
-  t.assert(evt.alarms[1].subject === subject);
+  t.assert(evt.alarms[1].summary.value === summary);
 });
 
 test("getting a single event but without any organizer present", async t => {
@@ -875,7 +885,7 @@ test("getting a single event but without any organizer present", async t => {
   const attendee = "attendee@mail.org";
   const description = "description";
   const time = "20200729T130856Z";
-  const subject = "bla";
+  const summary = "bla";
   const uid = "6720d455-76aa-4740-8766-c064df95bb3b";
   const worker = await createWorker(`
     app.get('/:uid', function (req, res) {
@@ -898,7 +908,7 @@ END:VALARM
 BEGIN:VALARM
 ACTION:EMAIL
 ATTENDEE:mailto:me@example.com
-SUBJECT:${subject}
+SUMMARY:${summary}
 DESCRIPTION:A email body
 TRIGGER;VALUE=DATE-TIME:20200729T140856Z
 END:VALARM
@@ -921,7 +931,7 @@ END:VCALENDAR\`);
   t.assert(evt.alarms[0].attendee === attendee);
   t.assert(evt.alarms[0].trigger instanceof Date);
 
-  t.assert(evt.alarms[1].subject === subject);
+  t.assert(evt.alarms[1].summary.value === summary);
 });
 
 test("getting a single event but only with organizer email present", async t => {
@@ -929,7 +939,7 @@ test("getting a single event but only with organizer email present", async t => 
   const attendee = "attendee@mail.org";
   const description = "description";
   const time = "20200729T130856Z";
-  const subject = "bla";
+  const summary = "bla";
   const organizer = { email: "john@smith.com" };
   const uid = "6720d455-76aa-4740-8766-c064df95bb3b";
   const worker = await createWorker(`
@@ -954,7 +964,7 @@ END:VALARM
 BEGIN:VALARM
 ACTION:EMAIL
 ATTENDEE:mailto:me@example.com
-SUBJECT:${subject}
+SUMMARY:${summary}
 DESCRIPTION:A email body
 TRIGGER;VALUE=DATE-TIME:20200729T140856Z
 END:VALARM
@@ -978,7 +988,7 @@ END:VCALENDAR\`);
   t.assert(evt.alarms[0].attendee === attendee);
   t.assert(evt.alarms[0].trigger instanceof Date);
 
-  t.assert(evt.alarms[1].subject === subject);
+  t.assert(evt.alarms[1].summary.value === summary);
 });
 
 test("getting a single event, but server returns html which is valid xml but not valid response", async t => {
@@ -1099,14 +1109,14 @@ test("if two alarms cause a bug where a comma shows up in iCAL result", async t 
   const alarms = [
     {
       action: "email",
-      summary: "Email's subject",
+      summary: "Email's summary",
       description: "email's description",
       trigger: new Date(),
       attendee: "email@example.com"
     },
     {
       action: "email",
-      summary: "Email's subject",
+      summary: "Email's summary",
       description: "email's description",
       trigger: add(new Date(), { hours: 1 }),
       attendee: "email@example.com"
@@ -1129,7 +1139,7 @@ test("updating an event to check whether mailto: and sms: multiply", async t => 
   const attendee = "attendee@mail.org";
   const description = "description";
   const time = "20200729T130856Z";
-  const subject = "bla";
+  const summary = "bla";
   const _location = "Friedrichstrasse 3, 46145 Oberhausen Stadtmitte";
   const uid = "abc";
   const phone = "+491795345170";
@@ -1137,7 +1147,6 @@ test("updating an event to check whether mailto: and sms: multiply", async t => 
     email: "john@smith.com",
     commonName: "John Smith"
   };
-  // NOTE:
   const worker = await createWorker(
     `
     app.get('/:uid', function (req, res) {
@@ -1169,14 +1178,14 @@ BEGIN:VALARM
 ACTION:SMS
 ATTENDEE:sms:sms:${phone}
 DESCRIPTION:Irgendein alarm
-SUBJECT:${subject}
+SUMMARY:${summary}
 TRIGGER;VALUE=DATE-TIME:20201003T123000Z
 END:VALARM
 BEGIN:VALARM
 ACTION:SMS
 ATTENDEE:sms:${phone}
 DESCRIPTION:Irgendein alarm
-SUBJECT:${subject}
+SUMMARY:${summary}
 TRIGGER;VALUE=DATE-TIME:20201003T123000Z
 END:VALARM
 END:VEVENT
@@ -1202,8 +1211,8 @@ END:VCALENDAR\`);
   t.assert("alarms" in evt);
   t.assert("_status" in evt);
   t.assert("organizer" in evt);
-  t.assert("location" in evt);
-  t.assert(evt.location === _location);
+  t.assert("_location" in evt);
+  t.assert(evt._location.value === _location);
   t.deepEqual(evt.organizer, organizer);
   t.assert(evt.href === `${URI}/${uid}.ics`);
   t.assert(evt.alarms.length === 4);
@@ -1211,8 +1220,86 @@ END:VCALENDAR\`);
   t.assert(evt.alarms[0].attendee === attendee);
   t.assert(evt.alarms[0].trigger instanceof Date);
   t.assert(evt.alarms[1].attendee === attendee);
-  t.assert(evt.alarms[2].subject === subject);
+  t.assert(evt.alarms[2].summary.value === summary);
   t.assert(evt.alarms[3].attendee === phone);
+
+  const res = await dav.updateEvent(
+    uid,
+    evt.start,
+    evt.end,
+    "updated summary",
+    evt.alarms,
+    "CONFIRMED"
+  );
+  t.assert(res.status === 201);
+});
+
+test("if language params that are not the default are kept when updating an event", async t => {
+  const action = "EMAIL";
+  const attendee = "attendee@mail.org";
+  const description = "description";
+  const time = "20200729T130856Z";
+  const language = "de-DE";
+  const summary = "bla";
+  const _location = "Friedrichstrasse 3, 46145 Oberhausen Stadtmitte";
+  const uid = "abc";
+  const phone = "+491795345170";
+  const organizer = {
+    email: "john@smith.com",
+    commonName: "John Smith"
+  };
+  const worker = await createWorker(
+    `
+    app.get('/:uid', function (req, res) {
+      res.status(201).send(\`BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//TimDaub//simple-caldav//EN
+BEGIN:VEVENT
+STATUS:CONFIRMED
+UID:${uid}
+DTSTART:20200729T180000Z
+DTEND:20200729T183000Z
+DTSTAMP:20200729T130856Z
+SUMMARY;LANGUAGE=${language}:new one
+LOCATION:${_location}
+ORGANIZER;CN=${organizer.commonName}:mailto:${organizer.email}
+BEGIN:VALARM
+ACTION:${action}
+ATTENDEE:mailto:${attendee}
+DESCRIPTION;LANGUAGE=${language}:${description}
+TRIGGER;VALUE=DATE-TIME:${time}
+END:VALARM
+END:VEVENT
+END:VCALENDAR\`);
+    });
+
+    app.put('/${uid}.ics', function (req, res) {
+      if (req.body.includes(";LANGUAGE=${language}")) {
+        return res.status(201).send();
+      }
+
+      res.status(500).send();
+    });
+  `,
+    2
+  );
+  const URI = `http://localhost:${worker.port}`;
+  const dav = new SimpleCalDAV(URI);
+  const evt = await dav.getEvent(uid);
+  t.assert("summary" in evt);
+  t.assert("start" in evt);
+  t.assert("end" in evt);
+  t.assert("alarms" in evt);
+  t.assert("_status" in evt);
+  t.assert("organizer" in evt);
+  t.assert("_location" in evt);
+  t.assert(evt._location.value === _location);
+  t.deepEqual(evt.organizer, organizer);
+  t.assert(evt.href === `${URI}/${uid}.ics`);
+  t.assert(evt.alarms.length === 1);
+  t.assert(evt.alarms[0].action === action);
+  t.assert(evt.alarms[0].attendee === attendee);
+  t.assert(evt.alarms[0].trigger instanceof Date);
 
   const res = await dav.updateEvent(
     uid,
@@ -1413,4 +1500,154 @@ test("if options are included in fetch requests", async t => {
   const end = add(new Date(), { hours: 1 });
   const res = await dav.createEvent(start, end);
   t.assert(res.status === 200);
+});
+
+test("if simplify event can handle language property on tags like summary, description, etc.", t => {
+  const action = "EMAIL";
+  const attendee = "attendee@mail.org";
+  const description = "description";
+  const time = "20200729T130856Z";
+  const language = "de-DE";
+  const summary = "a new summary";
+  const _location = "Friedrichstrasse 3, 46145 Oberhausen Stadtmitte";
+  const uid = "abc";
+  const phone = "+491795345170";
+  const organizer = {
+    email: "john@smith.com",
+    commonName: "John Smith"
+  };
+  const vevent = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//TimDaub//simple-caldav//EN
+BEGIN:VEVENT
+STATUS:CONFIRMED
+UID:${uid}
+DTSTART:20200729T180000Z
+DTEND:20200729T183000Z
+DTSTAMP:20200729T130856Z
+SUMMARY;LANGUAGE=${language}:${summary}
+LOCATION;LANGUAGE=${language}:${_location}
+ORGANIZER;CN=${organizer.commonName}:mailto:${organizer.email}
+BEGIN:VALARM
+ACTION:${action}
+ATTENDEE:mailto:${attendee}
+DESCRIPTION;LANGUAGE=${language}:${description}
+TRIGGER;VALUE=DATE-TIME:${time}
+SUMMARY;LANGUAGE=${language}:${summary}
+END:VALARM
+END:VEVENT
+END:VCALENDAR`;
+  let evt = SimpleCalDAV.parseICS(vevent);
+  evt = SimpleCalDAV.simplifyEvent(evt, "uri");
+
+  t.truthy(evt.summary);
+  t.is(evt.summary.language, language);
+  t.is(evt.summary.value, summary);
+
+  t.truthy(evt._location);
+  t.is(evt._location.language, language);
+  t.is(evt._location.value, _location);
+
+  t.truthy(evt.alarms[0].summary);
+  t.is(evt.alarms[0].summary.value, summary);
+  t.is(evt.alarms[0].summary.language, language);
+
+  t.truthy(evt.alarms[0].description);
+  t.is(evt.alarms[0].description.value, description);
+  t.is(evt.alarms[0].description.language, language);
+});
+
+test("if simplify event can handle a missing language property", t => {
+  const action = "EMAIL";
+  const attendee = "attendee@mail.org";
+  const description = "description";
+  const time = "20200729T130856Z";
+  const summary = "bla";
+  const _location = "Friedrichstrasse 3, 46145 Oberhausen Stadtmitte";
+  const uid = "abc";
+  const phone = "+491795345170";
+  const organizer = {
+    email: "john@smith.com",
+    commonName: "John Smith"
+  };
+  const vevent = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//TimDaub//simple-caldav//EN
+BEGIN:VEVENT
+STATUS:CONFIRMED
+UID:${uid}
+DTSTART:20200729T180000Z
+DTEND:20200729T183000Z
+DTSTAMP:20200729T130856Z
+SUMMARY:${summary}
+LOCATION:${_location}
+ORGANIZER;CN=${organizer.commonName}:mailto:${organizer.email}
+BEGIN:VALARM
+ACTION:${action}
+ATTENDEE:mailto:${attendee}
+DESCRIPTION:${description}
+TRIGGER;VALUE=DATE-TIME:${time}
+SUMMARY:${summary}
+END:VALARM
+END:VEVENT
+END:VCALENDAR`;
+  let evt = SimpleCalDAV.parseICS(vevent);
+  evt = SimpleCalDAV.simplifyEvent(evt, "uri");
+
+  t.truthy(evt.summary);
+  t.falsy(evt.summary.language);
+  t.false(evt.summary.hasOwnProperty("language"));
+  t.is(evt.summary.value, summary);
+
+  t.truthy(evt._location);
+  t.falsy(evt._location.language);
+  t.false(evt._location.hasOwnProperty("language"));
+  t.is(evt._location.value, _location);
+
+  t.truthy(evt.alarms[0].summary);
+  t.is(evt.alarms[0].summary.value, summary);
+  t.falsy(evt.alarms[0].summary.language);
+  t.false(evt.alarms[0].summary.hasOwnProperty("language"));
+
+  t.truthy(evt.alarms[0].description);
+  t.is(evt.alarms[0].description.value, description);
+  t.falsy(evt.alarms[0].description.language);
+  t.false(evt.alarms[0].description.hasOwnProperty("language"));
+});
+
+test("if simplify event can handle missing summary, summary, descriptions etc.", t => {
+  const action = "EMAIL";
+  const attendee = "attendee@mail.org";
+  const time = "20200729T130856Z";
+  const uid = "abc";
+  const phone = "+491795345170";
+  const organizer = {
+    email: "john@smith.com",
+    commonName: "John Smith"
+  };
+
+  const vevent = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//TimDaub//simple-caldav//EN
+BEGIN:VEVENT
+STATUS:CONFIRMED
+UID:${uid}
+DTSTART:20200729T180000Z
+DTEND:20200729T183000Z
+DTSTAMP:20200729T130856Z
+ORGANIZER;CN=${organizer.commonName}:mailto:${organizer.email}
+BEGIN:VALARM
+ACTION:${action}
+ATTENDEE:mailto:${attendee}
+TRIGGER;VALUE=DATE-TIME:${time}
+END:VALARM
+END:VEVENT
+END:VCALENDAR`;
+  let evt = SimpleCalDAV.parseICS(vevent);
+  evt = SimpleCalDAV.simplifyEvent(evt, "uri");
+
+  t.false(evt.hasOwnProperty("summary"));
+  t.false(evt.hasOwnProperty("_location"));
+  t.false(evt.alarms[0].hasOwnProperty("summary"));
+  t.false(evt.alarms[0].hasOwnProperty("description"));
 });

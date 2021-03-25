@@ -148,6 +148,14 @@ class SimpleCalDAV {
     }
   }
 
+  static toLanguageParam(language) {
+    if (language) {
+      return `;LANGUAGE=${language}`;
+    } else {
+      return "";
+    }
+  }
+
   static toVALARM(alarm) {
     let attendee;
     if (alarm && alarm.attendee && alarm.action.toUpperCase() === "EMAIL") {
@@ -167,10 +175,14 @@ class SimpleCalDAV {
     let valarm = "BEGIN:VALARM\n";
     valarm += `ACTION:${alarm.action.toUpperCase()}\n`;
     if (alarm && alarm.summary) {
-      valarm += `SUMMARY:${alarm.summary}\n`;
+      valarm += `SUMMARY${SimpleCalDAV.toLanguageParam(
+        alarm.summary.language
+      )}:${alarm.summary.value}\n`;
     }
     valarm += `ATTENDEE:${attendee}\n`;
-    valarm += `DESCRIPTION:${alarm.description}\n`;
+    valarm += `DESCRIPTION${SimpleCalDAV.toLanguageParam(
+      alarm.description.language
+    )}:${alarm.description.value}\n`;
     valarm += SimpleCalDAV.toTrigger(alarm.trigger);
     valarm += `END:VALARM\n`;
 
@@ -187,7 +199,12 @@ class SimpleCalDAV {
       vevent += `DTSTAMP:${SimpleCalDAV.formatDateTime(new Date())}\n`;
       vevent += `DTSTART:${SimpleCalDAV.formatDateTime(evt.start)}\n`;
       vevent += `DTEND:${SimpleCalDAV.formatDateTime(evt.end)}\n`;
-      vevent += `SUMMARY:${evt.summary}\n`;
+
+      if (evt.summary) {
+        vevent += `SUMMARY${SimpleCalDAV.toLanguageParam(
+          evt.summary.language
+        )}:${evt.summary.value}\n`;
+      }
       if (alarms) {
         vevent += alarms;
       }
@@ -210,7 +227,9 @@ class SimpleCalDAV {
         }
       }
       if (evt._location) {
-        vevent += `LOCATION:${evt._location}\n`;
+        vevent += `LOCATION${SimpleCalDAV.toLanguageParam(
+          evt._location.language
+        )}:${evt._location.value}\n`;
       }
       vevent += "END:VEVENT\n";
       vevent += "END:VCALENDAR";
@@ -239,7 +258,7 @@ class SimpleCalDAV {
       uid = uuidv4();
     }
     if (alarms) {
-      alarms = alarms.map(SimpleCalDAV.toVALARM).join("");
+      alarms = alarms.map(alarm => SimpleCalDAV.toVALARM(alarm)).join("");
     }
 
     const body = SimpleCalDAV.toVEVENT(
@@ -370,12 +389,44 @@ class SimpleCalDAV {
 
         const action = alarm.getFirstPropertyValue("action");
         const attendee = alarm.getFirstPropertyValue("attendee");
+
+        const summaryVal = alarm.getFirstPropertyValue("summary");
+        const summaryLang = alarm
+          .getFirstProperty("summary")
+          ?.getParameter("language");
+        let summary;
+
+        if (summaryVal) {
+          summary = { value: summaryVal };
+        }
+        if (summaryLang) {
+          summary.language = summaryLang;
+        }
+
+        const descVal = alarm.getFirstPropertyValue("description");
+        const descLang = alarm
+          .getFirstProperty("description")
+          ?.getParameter("language");
+        let description;
+
+        if (descVal) {
+          description = { value: descVal };
+        }
+        if (descLang) {
+          description.language = descLang;
+        }
+
         let res = {
           action,
-          trigger,
-          description: alarm.getFirstPropertyValue("description"),
-          subject: alarm.getFirstPropertyValue("subject")
+          trigger
         };
+
+        if (summary) {
+          res.summary = summary;
+        }
+        if (description) {
+          res.description = description;
+        }
 
         const mailtoExpr = new RegExp(".*mailto:(.+)$", "i");
         const smsExpr = new RegExp(".*sms:(.+)$", "i");
@@ -393,8 +444,30 @@ class SimpleCalDAV {
     finalEvent.alarms = valarms;
 
     const pevent = new Event(evt);
-    finalEvent.summary = pevent.summary;
-    finalEvent.location = pevent._firstProp("location");
+    const summaryVal = pevent.summary;
+    const summaryLang = evt
+      .getFirstProperty("summary")
+      ?.getParameter("language");
+
+    if (summaryVal) {
+      finalEvent.summary = { value: summaryVal };
+    }
+    if (summaryLang) {
+      finalEvent.summary.language = summaryLang;
+    }
+
+    const locationVal = pevent.location;
+    const locationLang = evt
+      .getFirstProperty("location")
+      ?.getParameter("language");
+
+    if (locationVal) {
+      finalEvent._location = { value: locationVal };
+    }
+    if (locationLang) {
+      finalEvent._location.language = locationLang;
+    }
+
     finalEvent.start = pevent.startDate.toJSDate();
     finalEvent.end = pevent.endDate.toJSDate();
 
