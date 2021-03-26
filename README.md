@@ -33,8 +33,9 @@ For now, see [tests](./test/index.test.js).
 
 ### Notes
 
-- We translate a VEVENT's `STATUS` in the whole library to the name
-  `_status` to make sure we're not violating any [reserved words rules of
+- We translate a VEVENT's `STATUS` & `LOCATION` in the whole library to the
+  name `_status` & `_location` to make sure we're not violating any [reserved
+  words rules of
   JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar#Keywords).
 - When initializing `new SimpleCalDAV` [`fetch` request
   options](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch)
