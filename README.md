@@ -62,6 +62,18 @@ releasing a new version of simple-caldav.
 
 ## Changelog
 
+### 0.8.0
+
+- Add `;LANGUAGE=locale` to VEVENT & VALARM `description`, `summary`,
+  `location`. Function interfaces and return values have changed therefore.
+  Instead of strings, an object of the shape `{ value: "string, language:
+  "locale"}` is now required.  The `language` prop is optional.
+- In some cases `subject` was wrongly used instead of `summary`. All
+  occurrences have been changed to `summary`.
+- Some internal code now uses [optional
+  chaining](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Optional_chaining),
+  which is why node requires a version > 14 now.
+
 ### 0.7.0
 
 - Instead of passing `fetch`'s `credentials` option as `"include"` by

@@ -1,8 +1,12 @@
 {
   "name": "simple-caldav",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "A library to make caldav calls straight-forward for developers",
   "main": "./src/index.js",
+  "engines": {
+    "node": ">=14.15.4"
+  },
+  "engineStrict": "true",
   "scripts": {
     "test": "ava -v",
     "watch": "ava -v --watch"
