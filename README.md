@@ -92,7 +92,7 @@ releasing a new version of simple-caldav.
 - Remove `xpath` and `xmldom` dependencies for smaller builds.
 - Remove `getETags` method.
 
-### 0.4.7 (after 0.5.0, [branch](/tree/version/0.4.7))
+### 0.4.7 (after 0.5.0, [branch](https://github.com/TimDaub/simple-caldav/tree/version/0.4.7))
 
 - Upgrade xmldom to v0.5.0
 
