@@ -37,6 +37,10 @@ $ npm run test
 
 ## Changelog
 
+### 0.4.7
+
+- Upgrade xmldom to v0.5.0
+
 ### 0.4.6
 
 - Add `static applyDuration(date, duration)` that allows applying an
