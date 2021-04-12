@@ -74,6 +74,10 @@ releasing a new version of simple-caldav.
   chaining](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Optional_chaining),
   which is why node requires a version > 14 now.
 
+### 0.7.1 (came after 0.8.0, [branch](https://github.com/TimDaub/simple-caldav/tree/version/0.7.1))
+
+- Bump a few dependencies' versions to fix vulnerabilities
+
 ### 0.7.0
 
 - Instead of passing `fetch`'s `credentials` option as `"include"` by
