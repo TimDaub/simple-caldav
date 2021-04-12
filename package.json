@@ -1,6 +1,6 @@
 {
   "name": "simple-caldav",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "A library to make caldav calls straight-forward for developers",
   "main": "./src/index.js",
   "scripts": {
@@ -24,7 +24,7 @@
   },
   "homepage": "https://github.com/TimDaub/simple-caldav#readme",
   "dependencies": {
-    "cross-fetch": "3.0.5",
+    "cross-fetch": "3.0.6",
     "date-fns": "2.16.1",
     "date-fns-tz": "1.0.12",
     "ical.js": "github:TimDaub/ical.js#feat/detect-module-mode-build",

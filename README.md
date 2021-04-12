@@ -58,6 +58,10 @@ $ npm run test
 
 ## Changelog
 
+### 0.7.1
+
+- Bump a few dependencies' versions to fix vulnerabilities
+
 ### 0.7.0
 
 - Instead of passing `fetch`'s `credentials` option as `"include"` by
