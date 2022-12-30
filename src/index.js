@@ -301,7 +301,21 @@ class SimpleCalDAV {
     return transform(evt, href);
   }
 
-  async listEvents(transform = SimpleCalDAV.simplifyEvent) {
+  async listEvents(transform = SimpleCalDAV.simplifyEvent, filter = {}) {
+    let compFilter = '<c:comp-filter name="VCALENDAR" />';
+
+    if (filter && (filter.start || filter.end)) {
+      compFilter = `
+        <c:comp-filter name="VCALENDAR">
+            <c:comp-filter name="VEVENT">
+                <c:time-range
+                  ${filter.start ? `start="${SimpleCalDAV.formatDateTime(filter.start)}"` : ""}
+                  ${filter.end ? `end="${SimpleCalDAV.formatDateTime(filter.end)}"` : ""}
+                />
+            </c:comp-filter>
+        </c:comp-filter>`
+    }
+
     const res = await fetch(this.uri, {
       method: "REPORT",
       headers: {
@@ -315,7 +329,7 @@ class SimpleCalDAV {
             <c:calendar-data />
           </d:prop>
           <c:filter>
-            <c:comp-filter name="VCALENDAR" />
+            ${compFilter}
           </c:filter>
         </c:calendar-query>`
     });
