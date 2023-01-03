@@ -3,7 +3,7 @@ const { Component, Event, Duration, Time, parse } = require("ical.js");
 const fetch = require("cross-fetch");
 const { v4: uuidv4 } = require("uuid");
 const { format, utcToZonedTime } = require("date-fns-tz");
-const { RRule } = require("rrule");
+const { rrulestr } = require("rrule");
 const add = require("date-fns/add");
 // NOTE: We decided on using sha1 for generating etags, as there's no mutual
 // crypto API for simple-caldav's targets, which are nodejs and browser
@@ -360,21 +360,29 @@ class SimpleCalDAV {
             .forEach(match => {
               if (!match[0].match("STATUS:CANCELLED"))
                 vevents.push(match[0].trim().split("\r\n"))
-            }
-            )
+            })
 
-        vevents.forEach(event => {
-          const rData = event.filter(line => line.match(/^(RRULE|EXRULE|DTSTART)/))
+            vevents.forEach(event => {
+          // creating transformed version for easier processing.
+          // NOTE: we assume that the transform returns data in the format of SimpleCalDAV.simplifyEvent.
+          const tEvent = transform(evt, href);
 
-          const rrule = RRule.fromString(rData.join("\n"));
+          const rData = event
+            .filter(line => line.match(/^(RRULE|EXDATE|EXRULE|DTSTART)/))
+            .map(line => {
+              // fix for bug in RRule: when DTSTART has no time, it will not generate sequences in the past
+              if (line.match(/^DTSTART/))
+                line = `DTSTART:${SimpleCalDAV.formatDateTime(tEvent.start)}`
+              return line
+            })
+
+          const rrule = rrulestr(rData.join('\n'))
+
+
           const range = {
             start: filter.start ?? new Date(new Date().setFullYear(new Date().getFullYear() - 1)),
             end: filter.end ?? new Date(new Date().setFullYear(new Date().getFullYear() + 3)),
           }
-
-          // NOTE: we assume that the transform returns data in the format of SimpleCalDAV.simplifyEvent
-          const tEvent = transform(evt);
-
           // we need to determine the duration (in ms) based on the original start/end dates in the transformed object
           const duration = new Date(tEvent.end) - new Date(tEvent.start);
 
