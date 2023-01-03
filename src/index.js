@@ -3,12 +3,14 @@ const { Component, Event, Duration, Time, parse } = require("ical.js");
 const fetch = require("cross-fetch");
 const { v4: uuidv4 } = require("uuid");
 const { format, utcToZonedTime } = require("date-fns-tz");
+const { rrulestr } = require("rrule");
 const add = require("date-fns/add");
 // NOTE: We decided on using sha1 for generating etags, as there's no mutual
 // crypto API for simple-caldav's targets, which are nodejs and browser
 // environments.
 const sha1 = require("sha1");
 const xmldoc = require("xmldoc");
+
 
 const prodid = "-//TimDaub//simple-caldav//EN";
 // NOTE: https://tools.ietf.org/html/rfc5545#section-3.8.1.11
@@ -219,9 +221,7 @@ class SimpleCalDAV {
       }
       if (evt.organizer && evt.organizer.email) {
         if (evt.organizer.commonName) {
-          vevent += `ORGANIZER;CN=${evt.organizer.commonName}:mailto:${
-            evt.organizer.email
-          }\n`;
+          vevent += `ORGANIZER;CN=${evt.organizer.commonName}:mailto:${evt.organizer.email}\n`;
         } else {
           vevent += `ORGANIZER:mailto:${evt.organizer.email}\n`;
         }
@@ -301,7 +301,21 @@ class SimpleCalDAV {
     return transform(evt, href);
   }
 
-  async listEvents(transform = SimpleCalDAV.simplifyEvent) {
+  async listEvents(transform = SimpleCalDAV.simplifyEvent, filter = {}) {
+    let compFilter = '<c:comp-filter name="VCALENDAR" />';
+
+    if (filter && (filter.start || filter.end)) {
+      compFilter = `
+        <c:comp-filter name="VCALENDAR">
+            <c:comp-filter name="VEVENT">
+                <c:time-range
+                  ${filter.start ? `start="${SimpleCalDAV.formatDateTime(filter.start)}"` : ""}
+                  ${filter.end ? `end="${SimpleCalDAV.formatDateTime(filter.end)}"` : ""}
+                />
+            </c:comp-filter>
+        </c:comp-filter>`
+    }
+
     const res = await fetch(this.uri, {
       method: "REPORT",
       headers: {
@@ -315,7 +329,7 @@ class SimpleCalDAV {
             <c:calendar-data />
           </d:prop>
           <c:filter>
-            <c:comp-filter name="VCALENDAR" />
+            ${compFilter}
           </c:filter>
         </c:calendar-query>`
     });
@@ -324,11 +338,67 @@ class SimpleCalDAV {
     const doc = new xmldoc.XmlDocument(text);
 
     const responses = doc.childrenNamed("response");
-    let events = responses.map(node => {
+    const events = []
+
+    responses.forEach(node => {
       const href = this.uri + node.valueWithPath("href");
-      let evt = node.valueWithPath("propstat.prop.C:calendar-data");
-      evt = SimpleCalDAV.parseICS(evt);
-      return transform(evt, href);
+      const ics = node.valueWithPath("propstat.prop.C:calendar-data");
+      const evt = SimpleCalDAV.parseICS(ics);
+
+      // check if event has recurrences (RRULE);
+      // if yes:
+      // - ATTENTION: it is possible that the original entry date is not within the requested range
+      // - therefore, we first determine which occurrences are within the range at all and then replicate them.
+      //      - however; if no range is set, we will set an artificial boundary of -1 year and +3 years (to avoid creating thousands of entries).
+      //      - when occurrences are determined, we will replicate the event for each recurrence and shove them into the events array
+      // if not:
+      // - add to events array
+
+      if (ics.match(/RRULE:/)) {
+        const vevents = []
+          ;[...ics.matchAll(/BEGIN:VEVENT(.|[\r\n])*?END:VEVENT\r\n/g)]
+            .forEach(match => {
+              if (!match[0].match("STATUS:CANCELLED"))
+                vevents.push(match[0].trim().split("\r\n"))
+            })
+
+            vevents.forEach(event => {
+          // creating transformed version for easier processing.
+          // NOTE: we assume that the transform returns data in the format of SimpleCalDAV.simplifyEvent.
+          const tEvent = transform(evt, href);
+
+          const rData = event
+            .filter(line => line.match(/^(RRULE|EXDATE|EXRULE|DTSTART)/))
+            .map(line => {
+              // fix for bug in RRule: when DTSTART has no time, it will not generate sequences in the past
+              if (line.match(/^DTSTART/))
+                line = `DTSTART:${SimpleCalDAV.formatDateTime(tEvent.start)}`
+              return line
+            })
+
+          const rrule = rrulestr(rData.join('\n'))
+
+
+          const range = {
+            start: filter.start ?? new Date(new Date().setFullYear(new Date().getFullYear() - 1)),
+            end: filter.end ?? new Date(new Date().setFullYear(new Date().getFullYear() + 3)),
+          }
+          // we need to determine the duration (in ms) based on the original start/end dates in the transformed object
+          const duration = new Date(tEvent.end) - new Date(tEvent.start);
+
+          rrule.between(range.start, range.end).forEach(occurrence => {
+            // re-create evt instances to avoid side effects
+            const tEvent = transform(evt, href);
+            tEvent.start = occurrence.toISOString();
+            tEvent.end = new Date(occurrence.getTime() + duration);
+
+            events.push(tEvent)
+          })
+        })
+      }
+      else {
+        events.push(transform(evt, href));
+      }
     });
 
     return events;

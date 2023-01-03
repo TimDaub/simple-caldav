@@ -32,6 +32,7 @@
     "date-fns": "2.16.1",
     "date-fns-tz": "1.0.12",
     "ical.js": "github:TimDaub/ical.js#feat/detect-module-mode-build",
+    "rrule": "^2.7.1",
     "sha1": "1.1.1",
     "uuid": "8.2.0",
     "xmldoc": "1.1.2"
