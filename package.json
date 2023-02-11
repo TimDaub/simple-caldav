@@ -37,7 +37,7 @@
     "xmldoc": "1.1.2"
   },
   "devDependencies": {
-    "ava": "3.10.1",
+    "ava": "5.2.0",
     "browser-env": "3.3.0",
     "expressively-mocked-fetch": "0.1.1",
     "moment": "2.29.1"
